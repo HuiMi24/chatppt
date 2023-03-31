@@ -1,11 +1,33 @@
 # What is ChatPPT
 ChatPPT is powered by chatgpt, it could help you to generate PPT/slide. It supports output in English and Chinese
 
+![What is GPT | 600](demo1.png)
+
+![什么是AWS](demo2.png)
+
 # Requirements
 Python 3.8.10 +
 
-# How to use it
+# Help message
+```
+$ python chatppt.py --help
+usage: chatppt.py [-h] -t TOPIC -k API_KEY [-p PAGES] [-l {cn,en}]
 
+I am your PPT assistant, I can help to you generate PPT.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TOPIC, --topic TOPIC
+                        Your topic name
+  -k API_KEY, --api_key API_KEY
+                        Your api key file path
+  -p PAGES, --pages PAGES
+                        How many slides to generate
+  -l {cn,en}, --language {cn,en}
+                        Output language
+```
+
+# How to use it
 
 1. Generate your openai API key https://platform.openai.com/account/api-keys
 
@@ -33,21 +55,3 @@ Python 3.8.10 +
     Your PPT: What is GPT.pptx
     ```
 
-# Help message
-```
-$ python chatppt.py --help
-usage: chatppt.py [-h] -t TOPIC -k API_KEY [-p PAGES] [-l {cn,en}]
-
-I am your PPT assistant, I can help to you generate PPT.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -t TOPIC, --topic TOPIC
-                        Your topic name
-  -k API_KEY, --api_key API_KEY
-                        Your api key file path
-  -p PAGES, --pages PAGES
-                        How many slides to generate
-  -l {cn,en}, --language {cn,en}
-                        Output language
-```
