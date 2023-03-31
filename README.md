@@ -41,7 +41,7 @@ optional arguments:
     $ python chatppt.py -t "What is GPT" -k <your api key> -p 5 -l en
 
     Hi, I am your PPT assistant.
-    I am powerby ChatGPT
+    I am powered by ChatGPT
     I'm working hard to generate your PPT about What is GPT.
     It may takes about a few minutes.
     Your PPT will be generated in English

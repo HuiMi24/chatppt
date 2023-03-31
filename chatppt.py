@@ -129,7 +129,7 @@ def generate_ppt(content: str, template=None):
 
 def main(topic: str, pages: int, api_key: str, language: str, template_path=None):
     robot_print("Hi, I am your PPT assistant.")
-    robot_print("I am powerby ChatGPT")
+    robot_print("I am powered by ChatGPT")
     # robot_print("If you have any issue, please contact hui_mi@dell.com")
     ppt_content = chatppt(topic, pages, api_key, language)
     generate_ppt(ppt_content)
