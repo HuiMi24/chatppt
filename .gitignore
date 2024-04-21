@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# the generate content
+*.pptx
+
+# Pipe files
+Pipfile
+Pipfile.lock
+
+# VSCode
+.vscode/
