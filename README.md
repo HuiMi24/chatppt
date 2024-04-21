@@ -3,6 +3,7 @@
 ChatPPT is a tool powered by chatgpt/ollama that helps you generate PPT/slide. It supports output in English and Chinese.
 
 ## Table of Contents
+
 - [What's New](#whats-new)
 - [What is ChatPPT](#what-is-chatppt)
 - [Requirements](#requirements)
@@ -12,39 +13,48 @@ ChatPPT is a tool powered by chatgpt/ollama that helps you generate PPT/slide. I
 - [License](#license)
 
 ## What's New
+
 ChatPPT now supports Ollama and includes a sample UI.
 
 ![UI demo 1](ui_demo_1.png)
 ![UI demo 2](ui_demo_2.png)
 
 ## What is ChatPPT
+
 ChatPPT is powered by chatgpt/ollama. It can help you generate PPT/slide in English and Chinese.
 
 ![What is GPT | 600](demo1.png)
 ![什么是AWS | 400](demo2.png)
 
 ## Requirements
+
 Python 3.8.10 or higher
 
 ## Installation
 
 ### Ollama
+
 Follow the [guide](https://ollama.com/) to install ollama
 
 ### OpenAI
-Generate your OpenAI API key at https://platform.openai.com/account/api-keys
+
+Generate your OpenAI API key at <https://platform.openai.com/account/api-keys>
 
 ## Usage
 
 1. Install requirements
+
     ```
-    $ pip install -r requirements.txt
+    pip install -r requirements.txt
     ```
+
 2. Start Streamlit
+
     ```
     streamlit run chatppt_ui.py
     ```
-3. Open the Streamlit URL in your browser (http://localhost:8501)
+
+3. Open the Streamlit URL in your browser (<http://localhost:8501>)
 
 ![UI](ui.png)
 
