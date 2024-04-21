@@ -22,6 +22,7 @@ class ChatPPT:
             print(char, end="", flush=True)
             time.sleep(random.randrange(1, 2) / 1000.0)
         print("\r")
+        return text
 
     def chatppt(self, topic, pages, language):
         language_map = {"cn": "Chinese", "en": "English"}
@@ -102,6 +103,7 @@ class ChatPPT:
         except Exception as e:
             print(f"The response is not a valid JSON format: {e}")
             print("I'm a PPT assistant, your PPT generate failed, please retry later..")
+            raise Exception("The LLM return invalid result, please retry later..")
             exit(1)
 
     def generate_ppt(self, content, template=None):
