@@ -20,7 +20,7 @@ elif ai_model == "ollama":
 
 # User inputs for the presentation
 topic = st.text_input("Enter the topic for the presentation")
-num_slides = st.slider("Number of slides", 5, 20, 5)
+num_slides = st.slider("Number of pages", 5, 20, 5)
 language = st.selectbox("Select language", ["en", "cn"])
 
 # Button to generate the Slide
