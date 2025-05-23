@@ -5,16 +5,18 @@ import argparse
 import time
 import random
 import datetime
+import anthropic # Added
 from ollama import Client
 from pptx import Presentation
 
 
 class ChatPPT:
-    def __init__(self, ai_model, api_key, ollama_url=None, ollama_model=None):
-        self.ai_model = ai_model
+    def __init__(self, model_provider, api_key, model_name, ollama_url=None, anthropic_api_key=None): # Added anthropic_api_key
+        self.model_provider = model_provider
         self.api_key = api_key
+        self.model_name = model_name
         self.ollama_url = ollama_url
-        self.ollama_model = ollama_model
+        self.anthropic_api_key = anthropic_api_key # Added
 
     @staticmethod
     def robot_print(text):
@@ -73,26 +75,41 @@ class ChatPPT:
         }
 
     def _get_messages(self, topic, pages, language_str, output_format):
-        return [
-            {
-                "role": "user",
-                "content": f"""I am preparing a presentation on {topic}. Please assist in generating an outline in JSON format, adhering to the specified format {json.dumps(output_format)}. The presentation should span {pages} pages, with as many bullet points as possible. The content should be returned in {language_str}. You must add content for each slide. For each slide, you must add at least 4 bullet. Please ensure the output is valid JSON match the RFC-8295 specification. Don't return any other message""",
-            }
-        ]
+        # For Anthropic, the system message is handled differently.
+        # We will prepare a common user message format.
+        # Anthropic's first message must be from the 'user'.
+        # The main prompt will be the first user message.
+        user_prompt = f"""I am preparing a presentation on {topic}. Please assist in generating an outline in JSON format, adhering to the specified format {json.dumps(output_format)}. The presentation should span {pages} pages, with as many bullet points as possible. The content should be returned in {language_str}. You must add content for each slide. For each slide, you must add at least 4 bullet. Please ensure the output is valid JSON match the RFC-8295 specification. Don't return any other message"""
+        return [{"role": "user", "content": user_prompt}]
+
 
     def _get_content(self, messages):
-        if self.ai_model == "openai":
+        if self.model_provider == "openai":
             openai.api_key = self.api_key
             completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo", messages=messages
+                model=self.model_name, messages=messages
             )
             return completion.choices[0].message.content
-        elif self.ai_model == "ollama":
+        elif self.model_provider == "ollama":
             if self.ollama_url is None:
-                raise Exception("Ollama URL is required when ai_model is 'ollama'")
+                raise Exception("Ollama URL is required when model_provider is 'ollama'")
             client = Client(host=self.ollama_url)
-            response = client.chat(model=self.ollama_model, messages=messages)
+            response = client.chat(model=self.model_name, messages=messages)
             return response["message"]["content"]
+        elif self.model_provider == "anthropic": # Added anthropic condition
+            if self.anthropic_api_key is None:
+                raise Exception("Anthropic API key is required when model_provider is 'anthropic'")
+            client = anthropic.Anthropic(api_key=self.anthropic_api_key)
+            
+            # Anthropic API has a 'system' parameter for system prompts.
+            # The first message in the 'messages' list must be from the 'user'.
+            # We are assuming the `_get_messages` method provides a list starting with a user message.
+            response = client.messages.create(
+                model=self.model_name,
+                max_tokens=2048, 
+                messages=messages
+            )
+            return response.content[0].text
 
     def _parse_content(self, content):
         try:
@@ -102,6 +119,7 @@ class ChatPPT:
             return json.loads(content.strip())
         except Exception as e:
             print(f"The response is not a valid JSON format: {e}")
+            print(f"Raw content from LLM: {content}") # Added for debugging
             print("I'm a PPT assistant, your PPT generate failed, please retry later..")
             raise Exception("The LLM return invalid result, please retry later..")
             exit(1)
@@ -163,7 +181,8 @@ class ChatPPT:
 
 def main():
     args = args_parser()
-    chat_ppt = ChatPPT(args.ai_model, args.api_key, args.ollama_url, args.ollama_model)
+    # Pass anthropic_api_key to ChatPPT constructor
+    chat_ppt = ChatPPT(args.model_provider, args.api_key, args.model_name, args.ollama_url, args.anthropic_api_key)
     chat_ppt.robot_print("Hi, I am your PPT assistant.")
     ppt_content = chat_ppt.chatppt(args.topic, args.pages, args.language)
     chat_ppt.generate_ppt(ppt_content)
@@ -175,16 +194,26 @@ def args_parser():
     )
     parser.add_argument(
         "-m",
-        "--ai_model",
-        choices=["openai", "ollama"],
+        "--model_provider",
+        choices=["openai", "ollama", "anthropic"], # Added "anthropic"
         default="openai",
-        help="Select the AI model",
+        help="Select the model provider (e.g., openai, ollama, anthropic)",
+    )
+    parser.add_argument(
+        "-n",
+        "--model_name",
+        type=str,
+        required=True,
+        help="Specify the model name to use (e.g., gpt-3.5-turbo, llama3, claude-3-opus-20240229)",
     )
     parser.add_argument(
         "-t", "--topic", type=str, required=True, help="Your topic name"
     )
-    parser.add_argument(
-        "-k", "--api_key", type=str, default=".token", help="Your api key file path"
+    parser.add_argument( # OpenAI API Key
+        "-k", "--api_key", type=str, default=".token", help="Your OpenAI API key or file path"
+    )
+    parser.add_argument( # Anthropic API Key
+        "--anthropic_api_key", type=str, default=None, help="Your Anthropic API key or file path"
     )
     parser.add_argument(
         "-u",
@@ -192,13 +221,6 @@ def args_parser():
         type=str,
         default="http://localhost:11434",
         help="Your ollama url",
-    )
-    parser.add_argument(
-        "-o",
-        "--ollama_model",
-        type=str,
-        default="llama3",
-        help="Specify the Ollama model to use",
     )
     parser.add_argument(
         "-p",
@@ -217,8 +239,36 @@ def args_parser():
         help="Output language",
     )
     args = parser.parse_args()
-    if args.ai_model == "openai" and args.api_key == ".token":
-        parser.error("--api_key is required when ai_model is 'openai'")
+    if args.model_provider == "openai" and args.api_key == ".token":
+        # Check if it's a file path or actual key
+        try:
+            with open(args.api_key, 'r') as f:
+                args.api_key = f.read().strip()
+        except FileNotFoundError:
+             parser.error("--api_key file not found or direct key not provided when model_provider is 'openai'")
+        except Exception as e:
+            parser.error(f"Error reading --api_key for openai: {e}")
+
+    if args.model_provider == "anthropic":
+        if args.anthropic_api_key is None:
+            parser.error("--anthropic_api_key is required when model_provider is 'anthropic'")
+        else:
+            # Check if it's a file path or actual key
+            try:
+                with open(args.anthropic_api_key, 'r') as f:
+                    args.anthropic_api_key = f.read().strip()
+            except FileNotFoundError:
+                # If not a file, assume it's the key itself
+                pass 
+            except Exception as e:
+                 parser.error(f"Error reading --anthropic_api_key: {e}")
+
+
+    # Update existing api_key check to ensure it's not None if provider is openai
+    if args.model_provider == "openai" and (args.api_key is None or args.api_key == ".token"):
+         parser.error("--api_key is required when model_provider is 'openai'")
+
+
     return args
 
 
