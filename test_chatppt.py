@@ -1,6 +1,7 @@
 import unittest
 import sys
 from unittest.mock import patch, mock_open
+import json # Added for _get_output_format
 
 from chatppt import args_parser, ChatPPT
 
@@ -26,44 +27,34 @@ class TestArgsParser(unittest.TestCase):
         self.assertEqual(args.topic, 'OpenAI Direct Key Test')
         self.assertIsNone(args.anthropic_api_key)
 
-    # Test for when --api_key is NOT provided, so it defaults to ".token"
-    # and args_parser tries to read this file.
     @patch("builtins.open", new_callable=mock_open, read_data="test_openai_key_from_default_dot_token_file")
     def test_openai_args_key_from_default_dot_token_file(self, mock_file):
         sys.argv = [
             'chatppt.py',
             '--model_provider', 'openai',
             '--model_name', 'gpt-4',
-            # No --api_key provided, so it defaults to ".token"
             '--topic', 'OpenAI Default .token File Key Test'
         ]
         args = args_parser()
         self.assertEqual(args.model_provider, 'openai')
         self.assertEqual(args.model_name, 'gpt-4')
-        # The args_parser logic should try to open ".token" and replace args.api_key
         self.assertEqual(args.api_key, 'test_openai_key_from_default_dot_token_file')
         self.assertEqual(args.topic, 'OpenAI Default .token File Key Test')
 
-    # Test for when --api_key IS provided with a specific path (NOT ".token")
-    # In this case, the current args_parser logic should treat the path itself as the key.
     def test_openai_args_key_as_custom_path_not_default_dot_token(self):
         custom_path_key = 'path/to/my_openai_key.txt'
         sys.argv = [
             'chatppt.py',
             '--model_provider', 'openai',
             '--model_name', 'gpt-4',
-            '--api_key', custom_path_key, # Specific path provided
+            '--api_key', custom_path_key, 
             '--topic', 'OpenAI Custom Path As Key Test'
         ]
-        # No mock for open here, as it shouldn't be called to read the file
-        # if the provided api_key is not ".token"
         args = args_parser()
         self.assertEqual(args.model_provider, 'openai')
         self.assertEqual(args.model_name, 'gpt-4')
-        # According to current args_parser, if api_key is not ".token", it's used directly.
         self.assertEqual(args.api_key, custom_path_key) 
         self.assertEqual(args.topic, 'OpenAI Custom Path As Key Test')
-
 
     def test_ollama_args(self):
         sys.argv = [
@@ -102,7 +93,7 @@ class TestArgsParser(unittest.TestCase):
             'chatppt.py',
             '--model_provider', 'anthropic',
             '--model_name', 'claude-3-sonnet-20240229',
-            '--anthropic_api_key', 'path/to/fake_anthropic_key.txt', # This path will be "opened"
+            '--anthropic_api_key', 'path/to/fake_anthropic_key.txt', 
             '--topic', 'Anthropic File Key Test'
         ]
         args = args_parser()
@@ -117,7 +108,6 @@ class TestArgsParser(unittest.TestCase):
             '--model_provider', 'openai',
             '--model_name', 'gpt-3.5-turbo',
             '--topic', 'Test Topic'
-            # API key defaults to '.token'
         ]
         with patch("builtins.open", side_effect=FileNotFoundError):
             with self.assertRaises(SystemExit):
@@ -191,6 +181,77 @@ class TestChatPPTInitialization(unittest.TestCase):
         self.assertEqual(chat_instance.api_key, "relevant_openai_key")
         self.assertEqual(chat_instance.ollama_url, "http://irrelevant_ollama") 
         self.assertEqual(chat_instance.anthropic_api_key, "irrelevant_anthropic")
+
+class TestChatPPTPromptCustomization(unittest.TestCase):
+    def setUp(self):
+        # api_key is a required positional argument for ChatPPT constructor
+        self.chat_instance = ChatPPT(model_provider="test_provider", api_key="dummy_key_for_test", model_name="test_model")
+        self.output_format = self.chat_instance._get_output_format() 
+
+    def test_get_messages_no_custom_instructions(self):
+        messages = self.chat_instance._get_messages(
+            topic="Test Topic",
+            pages=3,
+            language_str="English",
+            output_format=self.output_format,
+            custom_prompt_instructions=None
+        )
+        self.assertIsInstance(messages, list)
+        self.assertEqual(len(messages), 1)
+        self.assertNotIn("Additional Custom Instructions:", messages[0]["content"])
+        self.assertIn("I am preparing a presentation on Test Topic", messages[0]["content"])
+        # Check that the output_format (JSON string) is in the prompt
+        self.assertIn(json.dumps(self.output_format), messages[0]["content"])
+
+    def test_get_messages_with_custom_instructions(self):
+        custom_text = "Ensure all content is suitable for a young audience."
+        messages = self.chat_instance._get_messages(
+            topic="Test Topic",
+            pages=3,
+            language_str="English",
+            output_format=self.output_format,
+            custom_prompt_instructions=custom_text
+        )
+        self.assertIsInstance(messages, list)
+        self.assertEqual(len(messages), 1)
+        self.assertIn("Additional Custom Instructions:", messages[0]["content"])
+        self.assertIn(custom_text, messages[0]["content"])
+        # Check that the custom text is appended after the "Additional Custom Instructions:" line
+        expected_ending = f"Additional Custom Instructions:\n{custom_text}"
+        self.assertTrue(messages[0]["content"].strip().endswith(custom_text.strip())) # More robust check
+        self.assertIn(expected_ending, messages[0]["content"])
+        # Check for some part of the base prompt
+        self.assertIn("I am preparing a presentation on Test Topic", messages[0]["content"])
+
+    def test_get_messages_empty_custom_instructions(self):
+        custom_text = "" # Empty string
+        messages = self.chat_instance._get_messages(
+            topic="Test Topic",
+            pages=3,
+            language_str="English",
+            output_format=self.output_format,
+            custom_prompt_instructions=custom_text
+        )
+        self.assertIsInstance(messages, list)
+        self.assertEqual(len(messages), 1)
+        self.assertNotIn("Additional Custom Instructions:", messages[0]["content"])
+        # Check for some part of the base prompt
+        self.assertIn("I am preparing a presentation on Test Topic", messages[0]["content"])
+
+    def test_get_messages_whitespace_custom_instructions(self):
+        custom_text = "   " # Whitespace only
+        messages = self.chat_instance._get_messages(
+            topic="Test Topic",
+            pages=3,
+            language_str="English",
+            output_format=self.output_format,
+            custom_prompt_instructions=custom_text
+        )
+        self.assertIsInstance(messages, list)
+        self.assertEqual(len(messages), 1)
+        self.assertNotIn("Additional Custom Instructions:", messages[0]["content"])
+        # Check for some part of the base prompt
+        self.assertIn("I am preparing a presentation on Test Topic", messages[0]["content"])
 
 if __name__ == '__main__':
     unittest.main()

@@ -39,7 +39,8 @@ openai_api_key = None
 anthropic_api_key = None
 ollama_url = None
 selected_model_name = None
-template_file = None # Initialize template_file
+template_file = None 
+custom_prompt_instructions = None # Initialize custom_prompt_instructions
 
 # User selects the Model Provider
 model_provider = st.selectbox("Select Model Provider", ["openai", "ollama", "anthropic"])
@@ -95,6 +96,13 @@ topic = st.text_input("Enter the topic for the presentation")
 num_slides = st.slider("Number of pages", 5, 20, 5) 
 language = st.selectbox("Select language", ["en", "cn"])
 
+# Text area for custom prompt instructions
+custom_prompt_instructions = st.text_area(
+    "Custom Instructions (Optional)", 
+    help="Add any specific instructions, context, or constraints for the AI. This will be appended to the main prompt.",
+    key="custom_prompt_area"
+)
+
 # File uploader for PowerPoint template
 template_file = st.file_uploader("Upload a PowerPoint template (optional)", type=["pptx"], key="template_uploader")
 
@@ -123,7 +131,13 @@ if generate_button:
                     ollama_url=ollama_url, 
                     anthropic_api_key=anthropic_api_key
                 )
-                ppt_content = chat_ppt.chatppt(topic, num_slides, language)
+                # Pass custom_prompt_instructions to chatppt method
+                ppt_content = chat_ppt.chatppt(
+                    topic, 
+                    num_slides, 
+                    language, 
+                    custom_prompt_instructions=custom_prompt_instructions # Added
+                )
             except Exception as e:
                 st.error(f"Error generating Slide content: {e}")
                 st.stop()
@@ -138,7 +152,6 @@ if generate_button:
                     st.markdown(f"- Slide {index+1}: {slide.get('title','')}")
 
                 try:
-                    # Pass the uploaded template_file directly
                     ppt_file_name = chat_ppt.generate_ppt(ppt_content, template=template_file) 
                 except Exception as e:
                     st.error(f"Error generating Slide file: {e}")
