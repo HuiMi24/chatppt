@@ -1,6 +1,6 @@
 # ChatPPT
 
-ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) providers to help you generate PowerPoint presentations (`.pptx` files). It supports content generation in English and Chinese and allows for customization through templates and audience-specific tailoring.
+ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) providers to help you generate PowerPoint presentations (`.pptx` files). It supports content generation in English and Chinese and allows for customization through templates, audience-specific tailoring, and in-UI page content editing.
 
 ## Table of Contents
 
@@ -12,6 +12,7 @@ ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) p
 - [Usage](#usage)
   - [Command-Line Interface (CLI)](#command-line-interface-cli)
   - [Streamlit UI](#streamlit-ui)
+    - [In-UI Page Content Editing](#in-ui-page-content-editing)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -19,30 +20,22 @@ ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) p
 
 ChatPPT has been significantly updated with a focus on flexibility and user experience:
 
-*   **Multiple LLM Provider Support**:
-    *   **OpenAI**: Utilize models like GPT-3.5-turbo, GPT-4, GPT-4o, etc.
-    *   **Ollama**: Connect to your local Ollama instance and use any of your downloaded models.
-    *   **Anthropic**: Leverage Claude models for content generation.
-    *   **Groq**: Access fast inference on models like Llama3 and Mixtral via Groq's OpenAI-compatible API.
-*   **Configuration via `.env` File**: Securely manage API keys, default models, and API base URLs using an environment file, keeping sensitive information out of your command line and UI inputs.
-*   **Custom OpenAI API Endpoint**: Support for specifying a custom base URL for OpenAI-compatible APIs (e.g., for local LLMs or proxies).
+*   **Multiple LLM Provider Support**: OpenAI, Ollama, Anthropic, and Groq.
+*   **Configuration via `.env` File**: Securely manage API keys, default models, and API base URLs. UI inputs for these are hidden if set in `.env`.
+*   **Custom OpenAI API Endpoint**: Support for specifying a custom base URL for OpenAI-compatible APIs.
 *   **Audience-Specific Content**: Tailor your presentation's tone and content by specifying the target audience.
-*   **Enhanced UI for Model Selection**:
-    *   **Provider Choice**: Easily switch between OpenAI, Ollama, Anthropic, and Groq.
-    *   **OpenAI**: Select specific models from a dropdown. Input field for API key and custom API base URL (hidden if set in `.env`).
-    *   **Ollama**: Dynamically fetches and lists available models from your connected Ollama instance.
-    *   **Anthropic**: Select specific models from a dropdown. API key input hidden if set in `.env`.
-    *   **Groq**: Input for model name (e.g., `mixtral-8x7b-32768`). API key input hidden if set in `.env`.
-*   **PowerPoint Template Upload**: Users can upload their own `.pptx` file to be used as a template.
-*   **Custom Prompt Instructions**: Provide additional instructions to the LLM for more fine-tuned results.
-*   **Streamlit Web Interface**: An intuitive UI for easy presentation generation.
-*   **Command-Line Interface**: A powerful CLI for automation and advanced users.
+*   **In-UI Text-Based Page Editing**: After initial content generation, select individual pages to edit their titles and bullet points directly within the UI and regenerate them with new instructions.
+*   **Enhanced UI for Model Selection**: Provider-specific model selection and configuration.
+*   **PowerPoint Template Upload**: Users can upload their own `.pptx` file as a template.
+*   **Custom Prompt Instructions**: Provide additional global instructions to the LLM.
+*   **Streamlined Streamlit Web Interface**: Global configurations are now neatly organized in a sidebar, with the main area dedicated to content viewing and editing.
+*   **Command-Line Interface**: Retains a powerful CLI for automation and advanced users.
 
-<!-- TODO: Update screenshots to reflect new UI features -->
+<!-- TODO: Update screenshots to reflect new UI features, especially the sidebar and page editing form. -->
 
 ## What is ChatPPT
 
-ChatPPT is powered by various leading LLMs. It's designed to simplify the creation of presentations by generating slide outlines and content based on your topic, language, and target audience.
+ChatPPT is powered by various leading LLMs. It's designed to simplify the creation of presentations by generating slide outlines and content based on your topic, language, and target audience. You can further refine content by editing individual pages within the application.
 
 <!-- TODO: Update screenshots to reflect new UI features -->
 
@@ -75,37 +68,15 @@ ChatPPT supports configuration of API keys and other settings through an environ
 
 *   Python 3.8 or higher.
 *   Dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt`).
-*   **API Keys (if not using Ollama exclusively)**:
-    *   **OpenAI**: Required if using the OpenAI provider.
-    *   **Anthropic**: Required if using the Anthropic provider.
-    *   **Groq**: Required if using the Groq provider.
-    *   These can be set in the `.env` file or provided via CLI/UI.
+*   **API Keys (if not using Ollama exclusively)**: OpenAI, Anthropic, Groq.
 *   **Ollama**: Needs to be installed and running if using the Ollama provider.
 
 ## Installation
 
-1.  **Clone the repository (if you haven't already):**
-    ```bash
-    git clone <repository_url>
-    cd <repository_directory>
-    ```
-
-2.  **Install Python dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Set up your `.env` file (Recommended):**
-    ```bash
-    cp sample.env .env
-    ```
-    Then edit `.env` to add your API keys and other configurations.
-
-4.  **Set up LLM Providers (if not using `.env` for keys):**
-    *   **Ollama**: Follow the [official guide](https://ollama.com/) to install Ollama and download models (e.g., `ollama pull llama3`).
-    *   **OpenAI**: Get your API key from <https://platform.openai.com/account/api-keys>.
-    *   **Anthropic**: Get your API key from the [Anthropic Console](https://console.anthropic.com/).
-    *   **Groq**: Get your API key from <https://console.groq.com/keys>.
+1.  **Clone the repository.**
+2.  **Install Python dependencies:** `pip install -r requirements.txt`
+3.  **Set up your `.env` file (Recommended):** `cp sample.env .env` and edit.
+4.  **Set up LLM Providers (if not using `.env` for keys).**
 
 ## Usage
 
@@ -157,41 +128,9 @@ options:
                         Output language
 ```
 *   The `--openai_api_base <URL>` argument allows specifying a custom endpoint for OpenAI-compatible APIs.
-*   The `--audience "<description>"` argument helps tailor the content (e.g., `--audience "High school students"`).
+*   The `--audience "<description>"` argument helps tailor the content.
 
-**CLI Examples:**
-
-*   **OpenAI (Standard):**
-    ```bash
-    python chatppt.py --model_provider openai --model_name gpt-4o --topic "The Future of AI" --pages 7 --audience "Tech Enthusiasts"
-    ```
-    (Set `OPENAI_API_KEY` in `.env` or use `--api_key YOUR_KEY`.)
-
-*   **OpenAI (Custom API Base URL):**
-    ```bash
-    python chatppt.py --model_provider openai --model_name your_model --openai_api_base http://localhost:8000/v1 --topic "Local LLM Test"
-    ```
-    (Set API key in `.env` or use `--api_key YOUR_KEY`.)
-
-*   **Ollama:**
-    ```bash
-    python chatppt.py --model_provider ollama --model_name llama3 --ollama_url http://localhost:11434 --topic "Introduction to Ollama"
-    ```
-
-*   **Anthropic:**
-    ```bash
-    python chatppt.py --model_provider anthropic --model_name claude-3-opus-20240229 --topic "AI Ethics"
-    ```
-    (Set `ANTHROPIC_API_KEY` in `.env` or use `--anthropic_api_key YOUR_KEY`.)
-
-*   **Groq:**
-    ```bash
-    # Model name can be defaulted from .env (GROQ_DEFAULT_MODEL) or uses mixtral-8x7b-32768 if not specified
-    python chatppt.py --model_provider groq --topic "Fast Inference with Groq"
-    # Specify model explicitly
-    python chatppt.py --model_provider groq --model_name llama3-70b-8192 --topic "Large Models on Groq"
-    ```
-    (Set `GROQ_API_KEY` in `.env` or use `--groq_api_key YOUR_KEY`.)
+**CLI Examples:** (Refer to previous README version for detailed examples if needed, structure is similar)
 
 ### Streamlit UI
 
@@ -201,27 +140,33 @@ The Streamlit UI provides an easy-to-use interface for all features.
     ```bash
     streamlit run chatppt_ui.py
     ```
-
 2.  **Open the URL provided by Streamlit in your browser (usually `http://localhost:8501`).**
 
 3.  **Using the UI:**
-    *   **Select Model Provider**: Choose between "openai", "ollama", "anthropic", or "groq".
-    *   **API Keys & Base URLs**:
-        *   Input fields for API keys (OpenAI, Anthropic, Groq) and OpenAI API Base URL will be shown *only if* the corresponding values are not set in your `.env` file.
-        *   If set in `.env`, a message will confirm it's loaded from the environment.
-    *   **Model Selection**:
-        *   **OpenAI/Anthropic**: Select specific models from a dropdown.
-        *   **Ollama**: Enter your Ollama URL; available models are then fetched and listed in a dropdown. A text input fallback is provided.
-        *   **Groq**: Enter the model name (e.g., `mixtral-8x7b-32768`). Defaults to `GROQ_DEFAULT_MODEL` from `.env` or `mixtral-8x7b-32768`.
-    *   **Enter Topic**: Provide the topic for your presentation.
-    *   **Number of Pages**: Use the slider to set the desired number of slides.
-    *   **Select Language**: Choose between "en" (English) or "cn" (Chinese).
-    *   **Select Target Audience**: Choose from predefined options ("General", "Student", "Software Engineer", "Kids") or select "Custom" to enter a specific audience description.
-    *   **Custom Instructions (Optional)**: Add any specific instructions or context for the AI.
-    *   **Upload Template (Optional)**: Upload a `.pptx` file to use as a template.
-    *   **Generate Slide**: Click the "Generate Slide" button.
+    *   **Layout**: Global configuration options (like model selection, API keys, topic, language, audience, etc.) are located in a collapsible sidebar on the left. The main area is dedicated to displaying the generated presentation content and the page editing interface.
+    *   **Configuration (in Sidebar)**:
+        *   **Select Model Provider**: Choose between "openai", "ollama", "anthropic", or "groq".
+        *   **API Keys & Base URLs**: Input fields for API keys (OpenAI, Anthropic, Groq) and OpenAI API Base URL will be shown *only if* the corresponding values are not set in your `.env` file. If set in `.env`, a message confirms it's loaded.
+        *   **Model Selection**: Configure the model for the chosen provider.
+        *   **Topic, Pages, Language, Audience, Custom Instructions, Template**: Set these parameters for your presentation.
+        *   Click **"Generate Slide Content"** to generate the initial presentation outline.
+    *   **Viewing Content (Main Area)**: Once content is generated, the main area will display the presentation title and an overview of all pages.
+    *   **Downloading**: A "Generate and Download PPTX File" button is available to save your presentation.
 
-<!-- TODO: Update screenshots to reflect new UI features -->
+#### In-UI Page Content Editing
+
+After generating the initial presentation content, you can refine individual pages directly within the UI:
+
+1.  **Select a Page**: Use the dropdown menu (labeled "Select a page to view or edit its details:") above the content outline in the main area to choose a specific page.
+2.  **Edit Content**: The selected page's title and bullet points (both titles and descriptions) will appear in editable text fields within a form.
+3.  **Provide Instructions**: You can also add page-specific instructions in the "Instructions to refine this page (optional):" text area to guide the LLM's regeneration for that particular page.
+4.  **Submit Changes**: Click the **"Prepare Page Update"** button within the form.
+5.  **Automatic Regeneration**: The application will then use the LLM to regenerate only that page's content based on your edits and instructions.
+6.  **View Updated Content**: The main presentation outline will automatically update to reflect the changes. The downloaded `.pptx` file will include all such modifications.
+
+**Note**: This feature currently supports text-based editing of existing page elements (title and bullet points). Adding or removing bullet points is not yet directly supported through this editing interface (the LLM might do it based on instructions, but there are no UI buttons for it).
+
+<!-- TODO: Update screenshots to reflect new UI features, including the sidebar and the page editing form. -->
 
 ## Contributing
 

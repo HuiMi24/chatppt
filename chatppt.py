@@ -31,19 +31,18 @@ class ChatPPT:
         print("\r")
         return text
 
-    def chatppt(self, topic, pages, language, custom_prompt_instructions=None, audience=None): # Added audience
+    def chatppt(self, topic, pages, language, custom_prompt_instructions=None, audience=None):
         language_map = {"cn": "Chinese", "en": "English"}
-        language_str = language_map[language]
+        language_str = language_map.get(language, language) # Use language directly if not in map
         self.robot_print(f"I'm working hard to generate your PPT about {topic}.")
         self.robot_print("It may takes about a few minutes.")
         self.robot_print(f"Your PPT will be generated in {language_str}")
         output_format = self._get_output_format()
-        # Pass audience to _get_messages
         messages = self._get_messages(topic, pages, language_str, output_format, custom_prompt_instructions, audience)
         content = self._get_content(messages)
         return self._parse_content(content)
 
-    def _get_output_format(self):
+    def _get_output_format(self): # This is for the whole presentation
         return {
             "title": "example title",
             "pages": [
@@ -64,9 +63,17 @@ class ChatPPT:
                 },
             ],
         }
+    
+    def _get_single_page_output_format_example(self): # Example format for a single page
+        return {
+            "title": "page title",
+            "content": [
+                {"title": "bullet title 1", "description": "bullet description 1"},
+                {"title": "bullet title 2", "description": "bullet description 2"}
+            ]
+        }
 
-    def _get_messages(self, topic, pages, language_str, output_format, custom_prompt_instructions=None, audience=None): # Added audience
-        # Base prompt components
+    def _get_messages(self, topic, pages, language_str, output_format, custom_prompt_instructions=None, audience=None): 
         prompt_lines = [
             f"I am preparing a presentation on {topic}.",
             f"Please assist in generating an outline in JSON format, adhering to the specified format {json.dumps(output_format)}.",
@@ -75,21 +82,70 @@ class ChatPPT:
             "You must add content for each slide.",
             "For each slide, you must add at least 4 bullet.",
             "Please ensure the output is valid JSON match the RFC-8295 specification."
-            # Removed: "Don't return any other message"
         ]
-
-        # Add audience information if provided
         if audience and audience.strip():
             prompt_lines.append(f"The target audience for this presentation is: {audience.strip()}. Please tailor the content accordingly.")
-
-        # Add custom instructions if provided
         if custom_prompt_instructions and custom_prompt_instructions.strip():
             prompt_lines.append(f"\nAdditional Custom Instructions:\n{custom_prompt_instructions.strip()}")
-        
         full_prompt = "\n".join(prompt_lines)
         return [{"role": "user", "content": full_prompt}]
 
+    def regenerate_single_page(self, original_topic, original_language, page_data_to_edit, new_instructions_for_page=None):
+        page_content_str = json.dumps(page_data_to_edit, ensure_ascii=False, indent=2)
+        single_page_format_example = json.dumps(self._get_single_page_output_format_example(), ensure_ascii=False, indent=2)
+
+        prompt_lines = [
+            f"I am working on a presentation about '{original_topic}'.",
+            f"I need to refine a single slide. The language for the output should be {original_language}.",
+            f"The current content of the slide is (in JSON format):\n{page_content_str}\n"
+        ]
+
+        if new_instructions_for_page and new_instructions_for_page.strip():
+            prompt_lines.append(f"Please refine this slide based on the following instructions: {new_instructions_for_page.strip()}\n")
+        else:
+            prompt_lines.append("Please review and refine the content of this slide, ensuring clarity, accuracy, and completeness based on its current title and bullet points.\n")
+
+        prompt_lines.extend([
+            "You MUST return ONLY the complete JSON object for this single refined slide, including its 'title' and 'content' (with 'title' and 'description' for each bullet point).",
+            "Do not return any other text, explanations, or markdown formatting around the JSON.",
+            f"The JSON structure for the page should be exactly like this example (though with different actual content): {single_page_format_example}."
+        ])
+        
+        prompt = "\n".join(prompt_lines)
+        messages = [{"role": "user", "content": prompt}]
+
+        self.robot_print(f"Refining page: '{page_data_to_edit.get('title', 'Untitled Page')}'...")
+        llm_response_str = self._get_content(messages)
+
+        try:
+            match = re.search(r"(\{.*\})", llm_response_str, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+            else:
+                json_str = llm_response_str 
+            
+            new_page_json = json.loads(json_str.strip())
+
+            if not isinstance(new_page_json, dict) or \
+               "title" not in new_page_json or \
+               "content" not in new_page_json or \
+               not isinstance(new_page_json["content"], list):
+                raise ValueError("LLM returned JSON but not in the expected page format (missing title, content, or content is not a list).")
+            
+            for item in new_page_json["content"]:
+                if not isinstance(item, dict) or "title" not in item or "description" not in item:
+                    raise ValueError("LLM returned JSON with malformed bullet points (missing title or description in a bullet).")
+            
+            self.robot_print(f"Page '{new_page_json.get('title', 'Untitled Page')}' refined successfully.")
+            return new_page_json
+        except Exception as e:
+            error_message = f"Error parsing regenerated page content: {e}. Raw response snippet: {llm_response_str[:500]}..."
+            print(f"\n{error_message}") # Print for CLI/log visibility
+            raise Exception(error_message) from e
+
+
     def _get_content(self, messages):
+        # ... (existing _get_content method remains unchanged)
         if self.model_provider == "openai":
             if not self.api_key:
                 raise Exception("OpenAI API key is required but not provided/configured.")
@@ -145,14 +201,19 @@ class ChatPPT:
             response = client.messages.create(model=self.model_name, max_tokens=2048, messages=messages)
             return response.content[0].text
 
-    def _parse_content(self, content):
+
+    def _parse_content(self, content): # This is for the whole presentation JSON
         try:
             match = re.search(r"(\{.*\})", content, re.DOTALL)
             if match: content = match.groups()[0]
-            return json.loads(content.strip())
+            parsed_json = json.loads(content.strip())
+            # Basic validation for full presentation structure
+            if not isinstance(parsed_json, dict) or "title" not in parsed_json or "pages" not in parsed_json or not isinstance(parsed_json["pages"], list):
+                raise ValueError("LLM response for full presentation is not in the expected root format (missing title or pages list).")
+            return parsed_json
         except Exception as e:
-            print(f"The response is not a valid JSON format: {e}\nRaw content from LLM: {content}")
-            raise Exception("The LLM return invalid result, please retry later..")
+            print(f"The response is not a valid JSON format for full presentation: {e}\nRaw content from LLM: {content}")
+            raise Exception("The LLM return invalid result for full presentation, please retry later..")
 
     def generate_ppt(self, content, template=None):
         ppt = Presentation(template) if template else Presentation()
@@ -204,7 +265,7 @@ def args_parser():
     parser.add_argument("-m", "--model_provider", choices=["openai", "ollama", "anthropic", "groq"], default="openai", help="Select the model provider")
     parser.add_argument("-n", "--model_name", type=str, default=None, help="Specify the model name to use (e.g., gpt-3.5-turbo, llama3, claude-3-opus, mixtral-8x7b-32768). Required unless provider has a default (e.g. Groq).")
     parser.add_argument("-t", "--topic", type=str, required=True, help="Your topic name")
-    parser.add_argument("--audience", type=str, default=None, help="Specify the target audience for the presentation (e.g., 'students', 'technical experts').") # Added
+    parser.add_argument("--audience", type=str, default=None, help="Specify the target audience for the presentation (e.g., 'students', 'technical experts').") 
     
     parser.add_argument("-k", "--api_key", type=str, default=None, help="Your OpenAI API key or file path. Overrides .env.")
     parser.add_argument("--anthropic_api_key", type=str, default=None, help="Your Anthropic API key or file path. Overrides .env.")
@@ -269,13 +330,12 @@ def main():
         groq_api_key=resolved_groq_api_key
     )
     chat_ppt.robot_print("Hi, I am your PPT assistant.")
-    # Pass args.audience and handle custom_prompt_instructions (currently None for CLI)
     ppt_content = chat_ppt.chatppt(
         args.topic, 
         args.pages, 
         args.language, 
-        custom_prompt_instructions=None, # Assuming no CLI arg for this yet
-        audience=args.audience # Pass audience from CLI
+        custom_prompt_instructions=None, 
+        audience=args.audience 
     )
     chat_ppt.generate_ppt(ppt_content)
 
