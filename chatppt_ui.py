@@ -2,6 +2,11 @@ import streamlit as st
 from chatppt import ChatPPT
 import requests
 import json
+# Import configurations from config.py
+from config import (
+    OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY,
+    OPENAI_API_BASE, GROQ_API_BASE, GROQ_DEFAULT_MODEL
+)
 
 # Helper function to get Ollama models
 def get_ollama_models(ollama_url):
@@ -31,39 +36,52 @@ def get_ollama_models(ollama_url):
 st.title("ChatPPT Generator")
 st.write("Generate a slide presentation using AI!")
 
-# Initialize variables to None
-openai_model_name = None
-anthropic_model_name = None
-ollama_model_name = None
-openai_api_key = None
-anthropic_api_key = None
-ollama_url = None
+# Initialize variables that will hold the actual values passed to ChatPPT
+# These are resolved from UI input or .env config
+openai_api_key_to_use = OPENAI_API_KEY
+openai_api_base_to_use = OPENAI_API_BASE
+anthropic_api_key_to_use = ANTHROPIC_API_KEY
+groq_api_key_to_use = GROQ_API_KEY
+# Groq base URL is handled by chatppt.py using GROQ_API_BASE from config or a hardcoded default
+
+# Initialize UI-specific state variables
 selected_model_name = None
+ollama_url = None # Ollama URL is always taken from UI input
 template_file = None 
 custom_prompt_instructions = None
-openai_api_base = None # Initialize openai_api_base
+final_audience_str = ""
 
 # User selects the Model Provider
-model_provider = st.selectbox("Select Model Provider", ["openai", "ollama", "anthropic"])
+model_provider = st.selectbox("Select Model Provider", ["openai", "ollama", "anthropic", "groq"])
 
 # Depending on the AI model, different inputs are required
 if model_provider == "openai":
-    openai_api_key = st.text_input("Enter your OpenAI API Key", key="openai_key")
-    openai_model_name = st.selectbox(
+    if not OPENAI_API_KEY:
+        openai_api_key_input = st.text_input("Enter your OpenAI API Key", type="password", key="openai_key_input")
+        openai_api_key_to_use = openai_api_key_input
+    else:
+        st.success("OpenAI API Key loaded from .env file.")
+
+    selected_model_name = st.selectbox(
         "Select OpenAI Model", 
         ["gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4-turbo"], 
         key="openai_model_select"
     )
-    openai_api_base = st.text_input( # Added OpenAI API Base URL input
-        "OpenAI API Base URL (Optional)",
-        placeholder="e.g., http://localhost:8000/v1",
-        help="Leave blank to use the default OpenAI API URL.",
-        key="openai_api_base_url"
-    )
-    selected_model_name = openai_model_name
-    # Ensure other provider specific params are None
-    ollama_url = None 
-    anthropic_api_key = None
+    
+    if not OPENAI_API_BASE:
+        openai_api_base_input = st.text_input(
+            "OpenAI API Base URL (Optional)",
+            placeholder="e.g., http://localhost:8000/v1",
+            help="Leave blank to use the default OpenAI API URL.",
+            key="openai_api_base_input"
+        )
+        openai_api_base_to_use = openai_api_base_input if openai_api_base_input and openai_api_base_input.strip() else None
+    else:
+        st.info(f"Using OpenAI API Base URL from .env: {OPENAI_API_BASE}")
+    
+    # Ensure other provider keys are None for this branch
+    anthropic_api_key_to_use = None
+    groq_api_key_to_use = None
 
 elif model_provider == "ollama":
     ollama_url = st.text_input("Enter your Ollama URL", value="http://localhost:11434", key="ollama_url")
@@ -73,41 +91,74 @@ elif model_provider == "ollama":
         available_ollama_models = get_ollama_models(ollama_url)
 
     if available_ollama_models:
-        ollama_model_name = st.selectbox(
+        selected_model_name = st.selectbox(
             "Select Ollama Model", 
             available_ollama_models, 
             key="ollama_model_select"
         )
     else:
-        ollama_model_name = st.text_input(
+        selected_model_name = st.text_input(
             "Enter Ollama Model Name (or specify valid URL above to auto-detect)", 
             value="llama3", 
             key="ollama_model_text_fallback"
         )
-    selected_model_name = ollama_model_name
-    # Ensure other provider specific params are None
-    openai_api_key = None
-    anthropic_api_key = None
-    openai_api_base = None # Ensure openai_api_base is None for non-OpenAI providers
+    # Ensure other provider keys/bases are None
+    openai_api_key_to_use = None
+    openai_api_base_to_use = None
+    anthropic_api_key_to_use = None
+    groq_api_key_to_use = None
 
 elif model_provider == "anthropic":
-    anthropic_api_key = st.text_input("Enter your Anthropic API Key", key="anthropic_key")
-    anthropic_model_name = st.selectbox(
+    if not ANTHROPIC_API_KEY:
+        anthropic_api_key_input = st.text_input("Enter your Anthropic API Key", type="password", key="anthropic_key_input")
+        anthropic_api_key_to_use = anthropic_api_key_input
+    else:
+        st.success("Anthropic API Key loaded from .env file.")
+        
+    selected_model_name = st.selectbox(
         "Select Anthropic Model", 
         ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"], 
         key="anthropic_model_select"
     )
-    selected_model_name = anthropic_model_name
-    # Ensure other provider specific params are None
-    openai_api_key = None
-    ollama_url = None
-    openai_api_base = None # Ensure openai_api_base is None for non-OpenAI providers
+    # Ensure other provider keys/bases are None
+    openai_api_key_to_use = None
+    openai_api_base_to_use = None
+    groq_api_key_to_use = None
 
+elif model_provider == "groq":
+    if not GROQ_API_KEY:
+        groq_api_key_input = st.text_input("Enter your Groq API Key", type="password", key="groq_key_input")
+        groq_api_key_to_use = groq_api_key_input
+    else:
+        st.success("Groq API Key loaded from .env file.")
+
+    selected_model_name = st.text_input(
+        "Enter Groq Model Name", 
+        value=(GROQ_DEFAULT_MODEL or "mixtral-8x7b-32768"), 
+        help="e.g., mixtral-8x7b-32768, llama3-70b-8192",
+        key="groq_model_name_input"
+    )
+    # Ensure other provider keys/bases are None
+    openai_api_key_to_use = None
+    openai_api_base_to_use = None
+    anthropic_api_key_to_use = None
+    # Groq API base is handled by chatppt.py using config.GROQ_API_BASE or hardcoded default
 
 # User inputs for the presentation
 topic = st.text_input("Enter the topic for the presentation")
 num_slides = st.slider("Number of pages", 5, 20, 5) 
 language = st.selectbox("Select language", ["en", "cn"])
+
+# Audience Selection
+audience_options = ["General", "Student", "Software Engineer", "Kids", "Custom"]
+selected_audience_option = st.selectbox("Select Target Audience", audience_options, key="audience_select")
+
+if selected_audience_option == "Custom":
+    final_audience_str = st.text_input("Enter Custom Audience Description", key="custom_audience_input")
+elif selected_audience_option != "General":
+    final_audience_str = selected_audience_option
+else:
+    final_audience_str = None # Explicitly None for "General" or if not set
 
 # Text area for custom prompt instructions
 custom_prompt_instructions = st.text_area(
@@ -122,14 +173,16 @@ template_file = st.file_uploader("Upload a PowerPoint template (optional)", type
 # Button to generate the Slide
 generate_button = st.button("Generate Slide", disabled=False)
 
-# If the button is clicked, generate the Slide
 if generate_button:
-    if model_provider == "openai" and not openai_api_key:
-        st.error("OpenAI API Key is required.")
+    # Validation logic using the resolved *_to_use variables
+    if model_provider == "openai" and not openai_api_key_to_use:
+        st.error("OpenAI API Key is required. Please enter it or set OPENAI_API_KEY in your .env file.")
+    elif model_provider == "anthropic" and not anthropic_api_key_to_use:
+        st.error("Anthropic API Key is required. Please enter it or set ANTHROPIC_API_KEY in your .env file.")
+    elif model_provider == "groq" and not groq_api_key_to_use:
+        st.error("Groq API Key is required. Please enter it or set GROQ_API_KEY in your .env file.")
     elif model_provider == "ollama" and (not ollama_url or not selected_model_name):
         st.error("Ollama URL and Model Name are required.")
-    elif model_provider == "anthropic" and not anthropic_api_key:
-        st.error("Anthropic API Key is required.")
     elif not topic:
         st.error("Topic for the presentation is required.")
     elif not selected_model_name and model_provider != "ollama": 
@@ -137,22 +190,24 @@ if generate_button:
     else:
         with st.spinner("Generating Slide..."):
             try:
-                # If openai_api_base is an empty string, treat it as None
-                current_openai_api_base = openai_api_base if openai_api_base and openai_api_base.strip() else None
-
+                # Ensure that an empty string for openai_api_base_to_use is treated as None
+                current_openai_api_base_for_call = openai_api_base_to_use if openai_api_base_to_use and openai_api_base_to_use.strip() else None
+                
                 chat_ppt = ChatPPT(
                     model_provider=model_provider, 
-                    api_key=openai_api_key, 
+                    api_key=openai_api_key_to_use, # For OpenAI
                     model_name=selected_model_name, 
                     ollama_url=ollama_url, 
-                    anthropic_api_key=anthropic_api_key,
-                    openai_api_base=current_openai_api_base # Pass the potentially None-ified base URL
+                    anthropic_api_key=anthropic_api_key_to_use, 
+                    openai_api_base=current_openai_api_base_for_call,
+                    groq_api_key=groq_api_key_to_use # For Groq
                 )
                 ppt_content = chat_ppt.chatppt(
                     topic, 
                     num_slides, 
                     language, 
-                    custom_prompt_instructions=custom_prompt_instructions
+                    custom_prompt_instructions=custom_prompt_instructions,
+                    audience=final_audience_str # Pass the audience string
                 )
             except Exception as e:
                 st.error(f"Error generating Slide content: {e}")

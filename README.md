@@ -1,11 +1,12 @@
 # ChatPPT
 
-ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) providers to help you generate PowerPoint presentations (`.pptx` files). It supports content generation in English and Chinese and allows for customization through templates.
+ChatPPT is a versatile tool that leverages multiple Large Language Model (LLM) providers to help you generate PowerPoint presentations (`.pptx` files). It supports content generation in English and Chinese and allows for customization through templates and audience-specific tailoring.
 
 ## Table of Contents
 
 - [Features](#features)
 - [What is ChatPPT](#what-is-chatppt)
+- [Configuration via `.env` File](#configuration-via-env-file)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -22,35 +23,64 @@ ChatPPT has been significantly updated with a focus on flexibility and user expe
     *   **OpenAI**: Utilize models like GPT-3.5-turbo, GPT-4, GPT-4o, etc.
     *   **Ollama**: Connect to your local Ollama instance and use any of your downloaded models.
     *   **Anthropic**: Leverage Claude models for content generation.
+    *   **Groq**: Access fast inference on models like Llama3 and Mixtral via Groq's OpenAI-compatible API.
+*   **Configuration via `.env` File**: Securely manage API keys, default models, and API base URLs using an environment file, keeping sensitive information out of your command line and UI inputs.
 *   **Custom OpenAI API Endpoint**: Support for specifying a custom base URL for OpenAI-compatible APIs (e.g., for local LLMs or proxies).
+*   **Audience-Specific Content**: Tailor your presentation's tone and content by specifying the target audience.
 *   **Enhanced UI for Model Selection**:
-    *   **Provider Choice**: Easily switch between OpenAI, Ollama, and Anthropic.
-    *   **OpenAI**: Select specific models (e.g., `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`) from a dropdown. Input field for custom OpenAI API base URL.
-    *   **Ollama**: Dynamically fetches and lists available models from your connected Ollama instance in a dropdown. Provides a text input fallback if models can't be fetched.
-    *   **Anthropic**: Input your API key and select from available Claude models (e.g., `claude-3-opus-20240229`, `claude-3-sonnet-20240229`) via a dropdown.
-*   **PowerPoint Template Upload**:
-    *   Users can upload their own `.pptx` file, which ChatPPT will use as a template for the generated presentation, preserving layouts and styles.
-*   **Streamlit Web Interface**: An intuitive UI for easy presentation generation without needing CLI commands for most users.
-*   **Command-Line Interface**: Retains a powerful CLI for users who prefer or need to automate presentation generation.
+    *   **Provider Choice**: Easily switch between OpenAI, Ollama, Anthropic, and Groq.
+    *   **OpenAI**: Select specific models from a dropdown. Input field for API key and custom API base URL (hidden if set in `.env`).
+    *   **Ollama**: Dynamically fetches and lists available models from your connected Ollama instance.
+    *   **Anthropic**: Select specific models from a dropdown. API key input hidden if set in `.env`.
+    *   **Groq**: Input for model name (e.g., `mixtral-8x7b-32768`). API key input hidden if set in `.env`.
+*   **PowerPoint Template Upload**: Users can upload their own `.pptx` file to be used as a template.
+*   **Custom Prompt Instructions**: Provide additional instructions to the LLM for more fine-tuned results.
+*   **Streamlit Web Interface**: An intuitive UI for easy presentation generation.
+*   **Command-Line Interface**: A powerful CLI for automation and advanced users.
 
 <!-- TODO: Update screenshots to reflect new UI features -->
-<!-- Existing screenshots like ui_demo_1.png, ui_demo_2.png might be outdated -->
 
 ## What is ChatPPT
 
-ChatPPT is powered by various leading LLMs. It's designed to simplify the creation of presentations by generating slide outlines and content based on your topic. It supports output in English and Chinese.
+ChatPPT is powered by various leading LLMs. It's designed to simplify the creation of presentations by generating slide outlines and content based on your topic, language, and target audience.
 
 <!-- TODO: Update screenshots to reflect new UI features -->
-<!-- Existing demo screenshots like demo1.png, demo2.png might be outdated -->
+
+## Configuration via `.env` File
+
+ChatPPT supports configuration of API keys and other settings through an environment file named `.env` located in the project root. This method is recommended for managing sensitive information like API keys and for setting persistent defaults.
+
+1.  **Create your `.env` file**: Copy the provided sample file:
+    ```bash
+    cp sample.env .env
+    ```
+2.  **Edit `.env`**: Open the `.env` file in a text editor and fill in your actual values. Remove the `#` from the beginning of lines you wish to activate and set the appropriate values.
+
+**Supported Environment Variables:**
+
+*   `OPENAI_API_KEY="sk-..."`: Your OpenAI API Key.
+*   `OPENAI_API_BASE="https://api.example.com/v1"`: Optional custom base URL for OpenAI-compatible services.
+*   `ANTHROPIC_API_KEY="sk-ant-..."`: Your Anthropic API Key.
+*   `GROQ_API_KEY="gsk_..."`: Your Groq API Key.
+*   `GROQ_API_BASE="https://api.groq.com/openai/v1"`: Optional Groq API base URL (defaults to the standard if not set).
+*   `GROQ_DEFAULT_MODEL="mixtral-8x7b-32768"`: Default model to use for Groq if not specified by the user.
+
+**Benefits of using `.env`:**
+
+*   **Security**: Keeps API keys out of your shell history and command-line arguments.
+*   **Convenience**: Avoids repetitive input of keys or URLs in the UI.
+*   **UI Integration**: If an API key or custom base URL is set in `.env`, the corresponding input field in the Streamlit UI will be hidden, and a message will indicate that the value is loaded from the environment.
 
 ## Requirements
 
 *   Python 3.8 or higher.
-*   Dependencies listed in `requirements.txt` (includes `openai`, `ollama`, `anthropic`, `python-pptx`, `streamlit`).
-*   **API Keys**:
-    *   An API key is required for models from **OpenAI**.
-    *   An API key is required for models from **Anthropic**.
-    *   Ollama runs locally and typically does not require an API key, but needs to be installed and running.
+*   Dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt`).
+*   **API Keys (if not using Ollama exclusively)**:
+    *   **OpenAI**: Required if using the OpenAI provider.
+    *   **Anthropic**: Required if using the Anthropic provider.
+    *   **Groq**: Required if using the Groq provider.
+    *   These can be set in the `.env` file or provided via CLI/UI.
+*   **Ollama**: Needs to be installed and running if using the Ollama provider.
 
 ## Installation
 
@@ -65,10 +95,17 @@ ChatPPT is powered by various leading LLMs. It's designed to simplify the creati
     pip install -r requirements.txt
     ```
 
-3.  **Set up LLM Providers:**
-    *   **Ollama**: Follow the [official guide](https://ollama.com/) to install Ollama and download your desired models (e.g., `ollama pull llama3`).
-    *   **OpenAI**: Generate your OpenAI API key at <https://platform.openai.com/account/api-keys>. You can provide this key directly in the UI/CLI or store it in a file (e.g., `.token`) and provide the file path. If using a custom OpenAI-compatible API, you might use a different key and will need the base URL.
-    *   **Anthropic**: Obtain your API key from the [Anthropic Console](https://console.anthropic.com/). Provide this key directly in the UI/CLI or store it in a file.
+3.  **Set up your `.env` file (Recommended):**
+    ```bash
+    cp sample.env .env
+    ```
+    Then edit `.env` to add your API keys and other configurations.
+
+4.  **Set up LLM Providers (if not using `.env` for keys):**
+    *   **Ollama**: Follow the [official guide](https://ollama.com/) to install Ollama and download models (e.g., `ollama pull llama3`).
+    *   **OpenAI**: Get your API key from <https://platform.openai.com/account/api-keys>.
+    *   **Anthropic**: Get your API key from the [Anthropic Console](https://console.anthropic.com/).
+    *   **Groq**: Get your API key from <https://console.groq.com/keys>.
 
 ## Usage
 
@@ -76,13 +113,17 @@ ChatPPT can be used via its Streamlit web interface or through the command line.
 
 ### Command-Line Interface (CLI)
 
-The CLI has been updated to support the new model providers and options.
-
-**Help Message:**
+The CLI allows for detailed control over presentation generation. For the most up-to-date list of commands and arguments, run:
 ```bash
 python chatppt.py -h
-usage: chatppt.py [-h] [-m {openai,ollama,anthropic}] -n MODEL_NAME -t TOPIC
-                  [-k API_KEY] [--anthropic_api_key ANTHROPIC_API_KEY]
+```
+
+**Current Help Message (as of last update):**
+```bash
+usage: chatppt.py [-h] [-m {openai,ollama,anthropic,groq}] [-n MODEL_NAME] -t
+                  TOPIC [--audience AUDIENCE] [-k API_KEY]
+                  [--anthropic_api_key ANTHROPIC_API_KEY]
+                  [--groq_api_key GROQ_API_KEY]
                   [--openai_api_base OPENAI_API_BASE] [-u OLLAMA_URL]
                   [-p PAGES] [-l {cn,en}]
 
@@ -90,21 +131,24 @@ I am your PPT assistant, I can help to you generate PPT.
 
 options:
   -h, --help            show this help message and exit
-  -m {openai,ollama,anthropic}, --model_provider {openai,ollama,anthropic}
-                        Select the model provider (e.g., openai, ollama,
-                        anthropic)
+  -m {openai,ollama,anthropic,groq}, --model_provider {openai,ollama,anthropic,groq}
+                        Select the model provider
   -n MODEL_NAME, --model_name MODEL_NAME
                         Specify the model name to use (e.g., gpt-3.5-turbo,
-                        llama3, claude-3-opus-20240229)
+                        llama3, claude-3-opus, mixtral-8x7b-32768). Required
+                        unless provider has a default (e.g. Groq).
   -t TOPIC, --topic TOPIC
                         Your topic name
+  --audience AUDIENCE   Specify the target audience for the presentation
+                        (e.g., 'students', 'technical experts').
   -k API_KEY, --api_key API_KEY
-                        Your OpenAI API key or file path
+                        Your OpenAI API key or file path. Overrides .env.
   --anthropic_api_key ANTHROPIC_API_KEY
-                        Your Anthropic API key or file path
+                        Your Anthropic API key or file path. Overrides .env.
+  --groq_api_key GROQ_API_KEY
+                        Your Groq API key. Overrides .env.
   --openai_api_base OPENAI_API_BASE
-                        Optional custom base URL for the OpenAI API. (e.g.,
-                        http://localhost:8000/v1)
+                        Custom base URL for OpenAI API. Overrides .env.
   -u OLLAMA_URL, --ollama_url OLLAMA_URL
                         Your ollama url
   -p PAGES, --pages PAGES
@@ -112,38 +156,42 @@ options:
   -l {cn,en}, --language {cn,en}
                         Output language
 ```
-The `--openai_api_base <URL>` argument allows you to specify a custom endpoint for the OpenAI API. This is useful if you are using a proxy, a local LLM server that mimics the OpenAI API (like LocalAI or vLLM's OpenAI-compatible server), or any other service that provides an OpenAI-compatible API.
+*   The `--openai_api_base <URL>` argument allows specifying a custom endpoint for OpenAI-compatible APIs.
+*   The `--audience "<description>"` argument helps tailor the content (e.g., `--audience "High school students"`).
 
 **CLI Examples:**
 
 *   **OpenAI (Standard):**
     ```bash
-    python chatppt.py --model_provider openai --model_name gpt-4o --api_key YOUR_OPENAI_KEY --topic "The Future of AI" --pages 7
+    python chatppt.py --model_provider openai --model_name gpt-4o --topic "The Future of AI" --pages 7 --audience "Tech Enthusiasts"
     ```
-    (Replace `YOUR_OPENAI_KEY` with your actual key or a path to a file containing the key.)
+    (Set `OPENAI_API_KEY` in `.env` or use `--api_key YOUR_KEY`.)
 
 *   **OpenAI (Custom API Base URL):**
     ```bash
-    # Example using a custom OpenAI-compatible API endpoint
-    python chatppt.py --model_provider openai \
-                     --model_name your_compatible_model_name \
-                     --api_key your_api_key_for_custom_endpoint \
-                     --openai_api_base http://localhost:8000/v1 \
-                     --topic "My Local LLM Presentation"
+    python chatppt.py --model_provider openai --model_name your_model --openai_api_base http://localhost:8000/v1 --topic "Local LLM Test"
     ```
-    (Replace `your_compatible_model_name` and `your_api_key_for_custom_endpoint` accordingly. The API key might be optional or different depending on your custom endpoint's configuration.)
+    (Set API key in `.env` or use `--api_key YOUR_KEY`.)
 
 *   **Ollama:**
     ```bash
     python chatppt.py --model_provider ollama --model_name llama3 --ollama_url http://localhost:11434 --topic "Introduction to Ollama"
     ```
-    (Ensure your Ollama instance is running at the specified URL and the model `llama3` is available.)
 
 *   **Anthropic:**
     ```bash
-    python chatppt.py --model_provider anthropic --model_name claude-3-opus-20240229 --anthropic_api_key YOUR_ANTHROPIC_KEY --topic "Advanced Language Models by Anthropic"
+    python chatppt.py --model_provider anthropic --model_name claude-3-opus-20240229 --topic "AI Ethics"
     ```
-    (Replace `YOUR_ANTHROPIC_KEY` with your actual key or a path to a file containing the key.)
+    (Set `ANTHROPIC_API_KEY` in `.env` or use `--anthropic_api_key YOUR_KEY`.)
+
+*   **Groq:**
+    ```bash
+    # Model name can be defaulted from .env (GROQ_DEFAULT_MODEL) or uses mixtral-8x7b-32768 if not specified
+    python chatppt.py --model_provider groq --topic "Fast Inference with Groq"
+    # Specify model explicitly
+    python chatppt.py --model_provider groq --model_name llama3-70b-8192 --topic "Large Models on Groq"
+    ```
+    (Set `GROQ_API_KEY` in `.env` or use `--groq_api_key YOUR_KEY`.)
 
 ### Streamlit UI
 
@@ -157,27 +205,23 @@ The Streamlit UI provides an easy-to-use interface for all features.
 2.  **Open the URL provided by Streamlit in your browser (usually `http://localhost:8501`).**
 
 3.  **Using the UI:**
-    *   **Select Model Provider**: Choose between "openai", "ollama", or "anthropic" from the main dropdown.
-    *   **Conditional Inputs**:
-        *   **If OpenAI is selected**:
-            *   Enter your OpenAI API Key.
-            *   Select a specific OpenAI model (e.g., `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`) from the dropdown.
-            *   **OpenAI API Base URL (Optional)**: If you are using an OpenAI-compatible proxy or a local LLM server, enter its base URL here (e.g., `http://localhost:8000/v1`). Leave blank to use the default OpenAI API.
-        *   **If Ollama is selected**:
-            *   Enter the URL for your running Ollama instance (defaults to `http://localhost:11434`).
-            *   Available models will be dynamically fetched and displayed in a dropdown. If fetching fails or the URL is not provided, a text input field will appear to manually enter the Ollama model name.
-        *   **If Anthropic is selected**:
-            *   Enter your Anthropic API Key.
-            *   Select a specific Anthropic Claude model (e.g., `claude-3-opus-20240229`) from the dropdown.
+    *   **Select Model Provider**: Choose between "openai", "ollama", "anthropic", or "groq".
+    *   **API Keys & Base URLs**:
+        *   Input fields for API keys (OpenAI, Anthropic, Groq) and OpenAI API Base URL will be shown *only if* the corresponding values are not set in your `.env` file.
+        *   If set in `.env`, a message will confirm it's loaded from the environment.
+    *   **Model Selection**:
+        *   **OpenAI/Anthropic**: Select specific models from a dropdown.
+        *   **Ollama**: Enter your Ollama URL; available models are then fetched and listed in a dropdown. A text input fallback is provided.
+        *   **Groq**: Enter the model name (e.g., `mixtral-8x7b-32768`). Defaults to `GROQ_DEFAULT_MODEL` from `.env` or `mixtral-8x7b-32768`.
     *   **Enter Topic**: Provide the topic for your presentation.
     *   **Number of Pages**: Use the slider to set the desired number of slides.
     *   **Select Language**: Choose between "en" (English) or "cn" (Chinese).
-    *   **Custom Instructions (Optional)**: Add any specific instructions or context for the AI in the text area.
-    *   **Upload Template (Optional)**: Click the "Browse files" button to upload a `.pptx` file to be used as a template for your presentation.
+    *   **Select Target Audience**: Choose from predefined options ("General", "Student", "Software Engineer", "Kids") or select "Custom" to enter a specific audience description.
+    *   **Custom Instructions (Optional)**: Add any specific instructions or context for the AI.
+    *   **Upload Template (Optional)**: Upload a `.pptx` file to use as a template.
     *   **Generate Slide**: Click the "Generate Slide" button.
 
 <!-- TODO: Update screenshots to reflect new UI features -->
-<!-- Existing screenshot ui.png might be outdated -->
 
 ## Contributing
 
