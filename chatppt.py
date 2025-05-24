@@ -26,18 +26,15 @@ from config import (ANTHROPIC_API_KEY, GROQ_API_BASE, GROQ_API_KEY,
                     GROQ_DEFAULT_MODEL, OPENAI_API_BASE, OPENAI_API_KEY)
 
 
-# pylint: disable=too-many-arguments
 class ChatPPT:
     """
     Handles the generation of presentation content using various LLM providers.
 
     This class encapsulates the logic for interacting with different LLMs,
     formatting prompts, parsing responses, and generating the final .pptx file.
-    Note: Pylint's too-many-arguments is disabled for __init__ as it's
-    a central configuration point and explicit arguments are preferred here.
     """
 
-    def __init__(self, model_provider: str, api_key: str | None, model_name: str,
+    def __init__(self, model_provider: str, api_key: str | None, model_name: str, # pylint: disable=too-many-arguments
                  ollama_url: str | None = None,
                  anthropic_api_key: str | None = None,
                  openai_api_base: str | None = None,
@@ -53,6 +50,8 @@ class ChatPPT:
             anthropic_api_key: API key for Anthropic (if model_provider is "anthropic").
             openai_api_base: Custom base URL for OpenAI-compatible APIs.
             groq_api_key: API key for Groq (if model_provider is "groq").
+        Note: Pylint's too-many-arguments (R0913) is disabled as explicit arguments (7)
+              are preferred for this central configuration point.
         """
         self.model_provider = model_provider
         self.api_key = api_key  # For OpenAI
@@ -79,9 +78,7 @@ class ChatPPT:
         print("\r")
         return text
 
-    # pylint: disable=too-many-arguments
-    # Note: 5 arguments is acceptable; disabled as parameters are distinct and clear.
-    def chatppt(self, topic: str, pages: int, language: str,
+    def chatppt(self, topic: str, pages: int, language: str, # pylint: disable=too-many-arguments
                 custom_prompt_instructions: str | None = None,
                 audience: str | None = None) -> dict:
         """
@@ -93,7 +90,8 @@ class ChatPPT:
             language: The language for the presentation content (e.g., "en", "cn").
             custom_prompt_instructions: Optional custom instructions for the LLM.
             audience: Optional target audience for the presentation.
-
+        Note: Pylint's too-many-arguments (R0913) is disabled as the 5 arguments
+              are distinct and contribute to the method's core functionality.
         Returns:
             A dictionary representing the structured presentation content.
         """
@@ -123,16 +121,21 @@ class ChatPPT:
                 {
                     "title": "title for page 1",
                     "content": [
-                        {"title": "title for bullet 1", "description": "detail for bullet 1"},
-                        {"title": "title for bullet 2", "description": "detail for bullet 2"},
-                        {"title": "title for bullet 3", "description": "detail for bullet 3"},
+                        {"title": "title for bullet 1",
+                         "description": "detail for bullet 1"},
+                        {"title": "title for bullet 2",
+                         "description": "detail for bullet 2"},
+                        {"title": "title for bullet 3",
+                         "description": "detail for bullet 3"},
                     ],
                 },
                 {
                     "title": "title for page 2",
                     "content": [
-                        {"title": "title for bullet 1", "description": "detail for bullet 1"},
-                        {"title": "title for bullet 2", "description": "detail for bullet 2"},
+                        {"title": "title for bullet 1",
+                         "description": "detail for bullet 1"},
+                        {"title": "title for bullet 2",
+                         "description": "detail for bullet 2"},
                     ],
                 },
             ],
@@ -153,9 +156,7 @@ class ChatPPT:
             ]
         }
 
-    # pylint: disable=too-many-arguments
-    # Note: output_format removed; 5 args is acceptable as parameters are distinct.
-    def _get_messages(self, topic: str, pages: int, language_str: str,
+    def _get_messages(self, topic: str, pages: int, language_str: str, # pylint: disable=too-many-arguments
                       custom_prompt_instructions: str | None = None,
                       audience: str | None = None) -> list[dict[str, str]]:
         """
@@ -167,15 +168,16 @@ class ChatPPT:
             language_str: The language for the content (e.g., "English").
             custom_prompt_instructions: Optional custom instructions.
             audience: Optional target audience.
-
+        Note: Pylint's too-many-arguments (R0913) is disabled as the 5 arguments
+              are distinct and necessary for prompt construction.
         Returns:
             A list containing a single dictionary, representing the user prompt.
         """
         output_format = self._get_output_format() # Fetched internally
         prompt_lines = [
             f"I am preparing a presentation on {topic}.",
-            "Please assist in generating an outline in JSON format, adhering to the specified format "
-            f"{json.dumps(output_format)}.",
+            "Please assist in generating an outline in JSON format, adhering to the "
+            f"specified format {json.dumps(output_format)}.",
             f"The presentation should span {pages} pages, with as many bullet points as possible.",
             f"The content should be returned in {language_str}.",
             "You must add content for each slide.",
@@ -194,9 +196,7 @@ class ChatPPT:
         full_prompt = "\n".join(prompt_lines)
         return [{"role": "user", "content": full_prompt}]
 
-    # pylint: disable=too-many-arguments
-    # Note: 4 arguments is fine, Pylint might be overly strict here.
-    def regenerate_single_page(self, original_topic: str, original_language: str,
+    def regenerate_single_page(self, original_topic: str, original_language: str, # pylint: disable=too-many-arguments
                                page_data_to_edit: dict,
                                new_instructions_for_page: str | None = None) -> dict:
         """
@@ -207,7 +207,8 @@ class ChatPPT:
             original_language: The language for the content (e.g., "English").
             page_data_to_edit: The current JSON data for the page to be edited.
             new_instructions_for_page: Optional new instructions for refining this page.
-
+        Note: Pylint's too-many-arguments (R0913) is disabled as the 4 arguments
+              are distinct and necessary for this functionality.
         Returns:
             A dictionary representing the JSON for the regenerated page.
 
@@ -265,7 +266,8 @@ class ChatPPT:
                     "(missing title, content, or content is not a list)."
                 )
             for item in new_page_json["content"]:
-                if not isinstance(item, dict) or "title" not in item or "description" not in item:
+                if not isinstance(item, dict) or "title" not in item or \
+                   "description" not in item:
                     raise ValueError(
                         "LLM returned JSON with malformed bullet points "
                         "(missing title or description in a bullet)."
@@ -281,9 +283,7 @@ class ChatPPT:
             print(f"\n{error_message}")
             raise ValueError(error_message) from e
 
-    # pylint: disable=too-many-branches
-    # Note: Multiple providers handled, structure is clear for targeted functionality.
-    def _get_content(self, messages: list[dict[str, str]]) -> str:
+    def _get_content(self, messages: list[dict[str, str]]) -> str: # pylint: disable=too-many-branches, too-many-locals, too-many-statements
         """
         Calls the appropriate LLM provider to get content based on the prompt.
         Args:
@@ -292,6 +292,11 @@ class ChatPPT:
             The string content received from the LLM.
         Raises:
             ValueError: If a required API key or URL is missing, or provider is unknown.
+        Note: Pylint's R0912 (too-many-branches), R0914 (too-many-locals), and
+              R0915 (too-many-statements) are disabled. This method handles multiple
+              distinct LLM providers and their specific API state management logic,
+              which inherently increases complexity but is organized for clarity of
+              each provider's handling.
         """
         if self.model_provider == "openai":
             if not self.api_key:
@@ -309,11 +314,15 @@ class ChatPPT:
                 completion = openai.ChatCompletion.create(model=self.model_name, messages=messages)
                 return str(completion.choices[0].message.content)
             finally: # Reset openai.api_base to its original state
-                if api_base_changed or (self.openai_api_base and self.openai_api_base.strip() and original_api_base is None):
+                if api_base_changed or (
+                    self.openai_api_base and self.openai_api_base.strip() and
+                    original_api_base is None
+                ):
                     openai.api_base = original_api_base
-                elif original_api_base is None and not (self.openai_api_base and self.openai_api_base.strip()):
-                     if openai.api_base == "https://api.openai.com/v1": # If we set it to default
-                         openai.api_base = None # Reset to None if it was originally None
+                elif original_api_base is None and \
+                     not (self.openai_api_base and self.openai_api_base.strip()):
+                    if openai.api_base == "https://api.openai.com/v1": # If we set it to default
+                        openai.api_base = None # Reset to None if it was originally None
 
         elif self.model_provider == "groq":
             if not self.groq_api_key:
@@ -506,15 +515,15 @@ def args_parser() -> argparse.Namespace:
     )
     parser.add_argument(
         "-n", "--model_name", type=str, default=None,
-        help="Specify the model name to use (e.g., gpt-3.5-turbo, llama3, "
-             "claude-3-opus, mixtral-8x7b-32768). Required unless provider "
-             "has a default (e.g. Groq)."
+        help=("Specify the model name to use (e.g., gpt-3.5-turbo, llama3, "
+              "claude-3-opus, mixtral-8x7b-32768). Required unless provider "
+              "has a default (e.g. Groq).")
     )
     parser.add_argument("-t", "--topic", type=str, required=True, help="Your topic name")
     parser.add_argument(
         "--audience", type=str, default=None,
-        help="Specify the target audience for the presentation "
-             "(e.g., 'students', 'technical experts')."
+        help=("Specify the target audience for the presentation "
+              "(e.g., 'students', 'technical experts').")
     )
     parser.add_argument(
         "-k", "--api_key", type=str, default=None,
@@ -546,8 +555,7 @@ def args_parser() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-# pylint: disable=too-many-locals
-def _resolve_main_configs(args: argparse.Namespace) -> dict:
+def _resolve_main_configs(args: argparse.Namespace) -> dict: # pylint: disable=too-many-locals
     """
     Resolves configurations for main execution, prioritizing CLI then .env.
 
@@ -556,6 +564,8 @@ def _resolve_main_configs(args: argparse.Namespace) -> dict:
 
     Returns:
         A dictionary of resolved configuration values.
+    Note: Pylint's too-many-locals (R0914) is disabled as this function
+          manages multiple distinct configuration items; clarity preferred.
     """
     resolved_configs = {
         "openai_api_key": args.api_key if args.api_key is not None else OPENAI_API_KEY,
@@ -639,3 +649,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+[end of chatppt.py]

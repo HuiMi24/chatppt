@@ -479,7 +479,8 @@ class TestRegenerateSinglePage(unittest.TestCase):
         self.assertIn(self.original_language, prompt_content)
         self.assertIn(json.dumps(self.page_data_to_edit, indent=2), prompt_content)
         self.assertIn(new_instructions, prompt_content)
-        self.assertIn("Please refine this slide based on the following instructions:", prompt_content)
+        self.assertIn("Please refine this slide based on the following instructions:",
+                      prompt_content)
         self.assertIn(self.single_page_format_example_str, prompt_content)
         self.assertEqual(result, json.loads(mock_llm_response))
 
@@ -492,7 +493,8 @@ class TestRegenerateSinglePage(unittest.TestCase):
         )
         prompt_content = mock_get_content.call_args[0][0][0]['content']
         self.assertIn("Please review and refine the content of this slide", prompt_content)
-        self.assertNotIn("Please refine this slide based on the following instructions:", prompt_content)
+        self.assertNotIn("Please refine this slide based on the following instructions:",
+                         prompt_content)
 
     @patch.object(ChatPPT, '_get_content')
     def test_regenerate_page_empty_instructions(self, mock_get_content: Mock):
@@ -517,7 +519,8 @@ class TestRegenerateSinglePage(unittest.TestCase):
     def test_regenerate_page_validation_error_wrong_structure(self, mock_get_content: Mock):
         """Test error handling for JSON response with incorrect structure."""
         mock_get_content.return_value = '{"page_title": "Wrong Key", "bullets": []}'
-        with self.assertRaisesRegex(ValueError, "LLM returned JSON but not in the expected page format"):
+        with self.assertRaisesRegex(ValueError,
+                                   "LLM returned JSON but not in the expected page format"):
             self.chat_instance.regenerate_single_page(
                 self.original_topic, self.original_language, self.page_data_to_edit
             )
@@ -527,7 +530,8 @@ class TestRegenerateSinglePage(unittest.TestCase):
         """Test error handling for JSON response with malformed bullet points."""
         mock_get_content.return_value = ('{"title": "Page", "content": '
                                          '[{"name": "Missing title/desc"}]}')
-        with self.assertRaisesRegex(ValueError, "LLM returned JSON with malformed bullet points"):
+        with self.assertRaisesRegex(ValueError,
+                                   "LLM returned JSON with malformed bullet points"):
             self.chat_instance.regenerate_single_page(
                 self.original_topic, self.original_language, self.page_data_to_edit
             )
@@ -535,3 +539,4 @@ class TestRegenerateSinglePage(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+[end of test_chatppt.py]

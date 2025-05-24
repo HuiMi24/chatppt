@@ -16,7 +16,6 @@ from chatppt import ChatPPT
 from config import (
     OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY,
     OPENAI_API_BASE, GROQ_DEFAULT_MODEL
-    # GROQ_API_BASE is not directly used in UI logic, only passed to ChatPPT via config
 )
 
 
@@ -30,12 +29,6 @@ def get_ollama_models(ollama_url: str | None) -> list[str]:
     Returns:
         A list of model names available on the Ollama instance.
         Returns an empty list if fetching fails or ollama_url is None.
-
-    Handles:
-        requests.exceptions.Timeout: If the request times out.
-        requests.exceptions.RequestException: For other network or HTTP errors.
-        json.JSONDecodeError: If the response from Ollama is not valid JSON.
-        Exception: For any other unexpected errors during the process.
     """
     if not ollama_url:
         return []
@@ -47,22 +40,18 @@ def get_ollama_models(ollama_url: str | None) -> list[str]:
         return [model['name'] for model in data.get('models', []) if 'name' in model]
     except requests.exceptions.Timeout:
         st.warning(
-            f"Timeout while trying to connect to {tags_url}. "
-            "Please check the Ollama URL and ensure Ollama is running."
+            f"Timeout connecting to {tags_url}. "
+            "Check Ollama URL and ensure it's running."
         )
     except requests.exceptions.RequestException as e:
         st.warning(
             f"Error fetching Ollama models from {tags_url}: {e}. "
-            "Please ensure Ollama is running and the URL is correct."
+            "Ensure Ollama is running and URL is correct."
         )
     except json.JSONDecodeError:
-        st.warning(
-            f"Error parsing JSON response from {tags_url}. "
-            "The response was not valid JSON."
-        )
+        st.warning(f"Error parsing JSON response from {tags_url}. Not valid JSON.")
     except Exception as e:  # pylint: disable=broad-except
-        # Catching general exception here to prevent UI crash for unexpected issues
-        st.warning(f"An unexpected error occurred while fetching Ollama models: {e}")
+        st.warning(f"Unexpected error fetching Ollama models: {e}")
     return []
 
 
@@ -78,7 +67,6 @@ if 'current_topic' not in st.session_state:
 if 'current_language_code' not in st.session_state:
     st.session_state.current_language_code = "en"
 
-# Session state for provider settings to be used by regeneration
 default_provider_settings = {
     'model_provider_for_regen': "openai",
     'selected_model_name_for_regen': "gpt-3.5-turbo",
@@ -92,15 +80,12 @@ for key, value in default_provider_settings.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-
 # --- Language Mapping ---
 LANGUAGE_MAP = {"cn": "Chinese", "en": "English"}
 
 # --- Sidebar for Configuration ---
 st.sidebar.header("⚙️ Configuration")
 
-# These variables will hold the current UI selections from the sidebar
-# and will be used to update session state or pass to ChatPPT
 sidebar_openai_api_key_to_use = OPENAI_API_KEY
 sidebar_openai_api_base_to_use = OPENAI_API_BASE
 sidebar_anthropic_api_key_to_use = ANTHROPIC_API_KEY
@@ -140,12 +125,11 @@ if model_provider == "openai":
         )
     else:
         st.sidebar.info(f"Using OpenAI API Base from .env: {OPENAI_API_BASE}")
-    sidebar_anthropic_api_key_to_use = None
-    sidebar_groq_api_key_to_use = None
+    sidebar_anthropic_api_key_to_use, sidebar_groq_api_key_to_use = None, None
 elif model_provider == "ollama":
     sidebar_ollama_url = st.sidebar.text_input(
         "Enter your Ollama URL",
-        value=st.session_state.ollama_url_for_regen, # Use session state default
+        value=st.session_state.ollama_url_for_regen,
         key="sidebar_ollama_url"
     )
     available_ollama_models = get_ollama_models(sidebar_ollama_url) if sidebar_ollama_url else []
@@ -157,10 +141,8 @@ elif model_provider == "ollama":
         sidebar_selected_model_name = st.sidebar.text_input(
             "Enter Ollama Model Name", value="llama3", key="sidebar_ollama_model_text_fallback"
         )
-    sidebar_openai_api_key_to_use = None
-    sidebar_openai_api_base_to_use = None
-    sidebar_anthropic_api_key_to_use = None
-    sidebar_groq_api_key_to_use = None
+    sidebar_openai_api_key_to_use, sidebar_openai_api_base_to_use = None, None
+    sidebar_anthropic_api_key_to_use, sidebar_groq_api_key_to_use = None, None
 elif model_provider == "anthropic":
     if not ANTHROPIC_API_KEY:
         anthropic_api_key_input = st.sidebar.text_input(
@@ -171,12 +153,12 @@ elif model_provider == "anthropic":
         st.sidebar.success("Anthropic API Key loaded from .env.")
     sidebar_selected_model_name = st.sidebar.selectbox(
         "Select Anthropic Model",
-        ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
+        ["claude-3-opus-20240229", "claude-3-sonnet-20240229",
+         "claude-3-haiku-20240307"],
         key="sidebar_anthropic_model_select"
     )
-    sidebar_openai_api_key_to_use = None
-    sidebar_openai_api_base_to_use = None
-    sidebar_groq_api_key_to_use = None
+    sidebar_openai_api_key_to_use, sidebar_openai_api_base_to_use = None, None
+    sidebar_groq_api_key_to_use = None, None
 elif model_provider == "groq":
     if not GROQ_API_KEY:
         groq_api_key_input = st.sidebar.text_input(
@@ -188,11 +170,11 @@ elif model_provider == "groq":
     sidebar_selected_model_name = st.sidebar.text_input(
         "Enter Groq Model Name",
         value=(GROQ_DEFAULT_MODEL or "mixtral-8x7b-32768"),
+        help="e.g., mixtral-8x7b-32768, llama3-70b-8192",
         key="sidebar_groq_model_name_input"
     )
-    sidebar_openai_api_key_to_use = None
-    sidebar_openai_api_base_to_use = None
-    sidebar_anthropic_api_key_to_use = None
+    sidebar_openai_api_key_to_use, sidebar_openai_api_base_to_use = None, None
+    sidebar_anthropic_api_key_to_use = None, None
 
 topic_input = st.sidebar.text_input(
     "Enter the topic for the presentation",
@@ -268,16 +250,17 @@ if st.sidebar.button("Generate Slide Content", key="sidebar_generate_content_but
 
         with st.spinner("Generating Slide Content..."):
             try:
-                # Use sidebar values for initial generation
+                current_openai_api_base = (
+                    sidebar_openai_api_base_to_use if sidebar_openai_api_base_to_use and
+                    sidebar_openai_api_base_to_use.strip() else None
+                )
                 chat_ppt_instance = ChatPPT(
                     model_provider=model_provider,
                     api_key=sidebar_openai_api_key_to_use,
                     model_name=sidebar_selected_model_name,
                     ollama_url=sidebar_ollama_url,
                     anthropic_api_key=sidebar_anthropic_api_key_to_use,
-                    openai_api_base=(sidebar_openai_api_base_to_use if
-                                     sidebar_openai_api_base_to_use and
-                                     sidebar_openai_api_base_to_use.strip() else None),
+                    openai_api_base=current_openai_api_base,
                     groq_api_key=sidebar_groq_api_key_to_use
                 )
                 generated_content = chat_ppt_instance.chatppt(
@@ -290,7 +273,7 @@ if st.sidebar.button("Generate Slide Content", key="sidebar_generate_content_but
                 st.session_state.edited_page_data_for_update = None
                 st.success("Slide content generated successfully!")
                 st.rerun()
-            # pylint: disable=broad-except # Catch all backend errors for UI display
+            # pylint: disable=broad-except
             except Exception as e:
                 st.error(f"Error generating slide content: {e}")
                 st.session_state.ppt_content = None
@@ -311,8 +294,12 @@ if st.session_state.edited_page_data_for_update:
                 openai_api_base=st.session_state.openai_api_base_for_regen,
                 groq_api_key=st.session_state.groq_api_key_for_regen
             )
-            page_json_to_edit = {"title": edited_data["title"], "content": edited_data["content"]}
-            language_str = LANGUAGE_MAP.get(st.session_state.current_language_code, "English")
+            page_json_to_edit = {
+                "title": edited_data["title"], "content": edited_data["content"]
+            }
+            language_str = LANGUAGE_MAP.get(
+                st.session_state.current_language_code, "English"
+            )
 
             new_page_content_json = chat_ppt_instance_for_update.regenerate_single_page(
                 original_topic=st.session_state.current_topic,
@@ -326,10 +313,12 @@ if st.session_state.edited_page_data_for_update:
                 st.session_state.ppt_content['pages'][page_idx_to_update] = new_page_content_json
                 st.success(f"Page {page_idx_to_update + 1} updated successfully!")
             else:
-                st.error("Failed to update page: Content structure invalid or page index out of bounds.")
+                st.error(
+                    "Failed to update page: Content structure invalid or page index out of bounds."
+                )
             st.session_state.edited_page_data_for_update = None
             st.rerun()
-        # pylint: disable=broad-except # Catch all backend errors for UI display
+        # pylint: disable=broad-except
         except Exception as e:
             st.error(f"Error updating page {page_idx_to_update + 1}: {e}")
             st.session_state.edited_page_data_for_update = None
@@ -341,10 +330,12 @@ st.write("Generate a slide presentation using AI!")
 if st.session_state.ppt_content:
     st.markdown("---")
     st.header(
-        f"Presentation Outline: {st.session_state.ppt_content.get('title', 'Untitled Presentation')}"
+        f"Presentation Outline: {st.session_state.ppt_content.get('title', 'Untitled')}"
     )
     pages_data = st.session_state.ppt_content.get('pages', [])
-    page_titles = [f"Page {i+1}: {page.get('title', 'Untitled')}" for i, page in enumerate(pages_data)]
+    page_titles = [
+        f"Page {i+1}: {page.get('title', 'Untitled')}" for i, page in enumerate(pages_data)
+    ]
 
     if page_titles:
         selection_options = ["View All / Select a Page"] + page_titles
@@ -433,7 +424,6 @@ if st.session_state.ppt_content:
         if st.session_state.ppt_content:
             with st.spinner("Generating PPTX file..."):
                 try:
-                    # Use session state for regeneration settings when downloading
                     current_openai_api_base = st.session_state.openai_api_base_for_regen
                     dl_chat_ppt_instance = ChatPPT(
                         model_provider=st.session_state.model_provider_for_regen,
@@ -450,9 +440,10 @@ if st.session_state.ppt_content:
                     with open(ppt_file_name, "rb") as f:
                         st.download_button(
                             label="Click to Download PPTX", data=f, file_name=ppt_file_name,
-                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation" # pylint: disable=line-too-long
+                            # pylint: disable=line-too-long
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                         )
-                # pylint: disable=broad-except # Catch all backend errors for UI display
+                # pylint: disable=broad-except
                 except Exception as e:
                     st.error(f"Error generating PPTX file: {e}")
         else:

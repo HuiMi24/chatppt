@@ -31,8 +31,11 @@ GROQ_DEFAULT_MODEL = os.getenv("GROQ_DEFAULT_MODEL") # e.g., "mixtral-8x7b-32768
 # UI specific configurations (optional)
 # HIDE_API_KEYS_IF_SET = os.getenv("HIDE_API_KEYS_IF_SET", "False").lower() in ("true", "1", "t")
 # HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED_STR = os.getenv(
-# "HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED", "False"
+#     "HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED", "False"
 # )
-# HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED = HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED_STR.lower() in ("true", "1", "t")
+# HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED = (
+#     HIDE_PROVIDER_SELECTION_IF_ONLY_ONE_CONFIGURED_STR.lower()
+#     in ("true", "1", "t")  # Wrapped for length
+# )
 
 # Add other configurations as needed in future steps
