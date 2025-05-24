@@ -11,12 +11,13 @@ from pptx import Presentation
 
 
 class ChatPPT:
-    def __init__(self, model_provider, api_key, model_name, ollama_url=None, anthropic_api_key=None):
+    def __init__(self, model_provider, api_key, model_name, ollama_url=None, anthropic_api_key=None, openai_api_base=None): 
         self.model_provider = model_provider
-        self.api_key = api_key
+        self.api_key = api_key 
         self.model_name = model_name
         self.ollama_url = ollama_url
         self.anthropic_api_key = anthropic_api_key
+        self.openai_api_base = openai_api_base 
 
     @staticmethod
     def robot_print(text):
@@ -26,14 +27,13 @@ class ChatPPT:
         print("\r")
         return text
 
-    def chatppt(self, topic, pages, language, custom_prompt_instructions=None): # Added custom_prompt_instructions
+    def chatppt(self, topic, pages, language, custom_prompt_instructions=None):
         language_map = {"cn": "Chinese", "en": "English"}
         language_str = language_map[language]
         self.robot_print(f"I'm working hard to generate your PPT about {topic}.")
         self.robot_print("It may takes about a few minutes.")
         self.robot_print(f"Your PPT will be generated in {language_str}")
         output_format = self._get_output_format()
-        # Pass custom_prompt_instructions to _get_messages
         messages = self._get_messages(topic, pages, language_str, output_format, custom_prompt_instructions)
         content = self._get_content(messages)
         return self._parse_content(content)
@@ -75,7 +75,7 @@ class ChatPPT:
             ],
         }
 
-    def _get_messages(self, topic, pages, language_str, output_format, custom_prompt_instructions=None): # Added custom_prompt_instructions
+    def _get_messages(self, topic, pages, language_str, output_format, custom_prompt_instructions=None): 
         base_prompt = f"""I am preparing a presentation on {topic}. Please assist in generating an outline in JSON format, adhering to the specified format {json.dumps(output_format)}. The presentation should span {pages} pages, with as many bullet points as possible. The content should be returned in {language_str}. You must add content for each slide. For each slide, you must add at least 4 bullet. Please ensure the output is valid JSON match the RFC-8295 specification. Don't return any other message"""
         
         if custom_prompt_instructions and custom_prompt_instructions.strip():
@@ -88,11 +88,29 @@ class ChatPPT:
 
     def _get_content(self, messages):
         if self.model_provider == "openai":
-            openai.api_key = self.api_key
-            completion = openai.ChatCompletion.create(
-                model=self.model_name, messages=messages
-            )
-            return completion.choices[0].message.content
+            openai.api_key = self.api_key 
+            
+            original_api_base = openai.api_base 
+            api_base_changed = False
+            if self.openai_api_base and self.openai_api_base.strip():
+                if openai.api_base != self.openai_api_base:
+                    openai.api_base = self.openai_api_base
+                    api_base_changed = True
+            elif openai.api_base is None: 
+                openai.api_base = "https://api.openai.com/v1"
+
+            try:
+                completion = openai.ChatCompletion.create(
+                    model=self.model_name, messages=messages
+                )
+                return completion.choices[0].message.content
+            finally:
+                if api_base_changed or (self.openai_api_base and self.openai_api_base.strip() and original_api_base is None):
+                     openai.api_base = original_api_base
+                elif original_api_base is None and not (self.openai_api_base and self.openai_api_base.strip()):
+                    if openai.api_base == "https://api.openai.com/v1" and not (self.openai_api_base and self.openai_api_base.strip()) and original_api_base is None:
+                         openai.api_base = None
+
         elif self.model_provider == "ollama":
             if self.ollama_url is None:
                 raise Exception("Ollama URL is required when model_provider is 'ollama'")
@@ -102,7 +120,7 @@ class ChatPPT:
         elif self.model_provider == "anthropic": 
             if self.anthropic_api_key is None:
                 raise Exception("Anthropic API key is required when model_provider is 'anthropic'")
-            client = anthropic.Anthropic(api_key=self.anthropic_api_key)
+            client = anthropic.Anthropic(api_key=self.anthropic_api_key) 
             
             response = client.messages.create(
                 model=self.model_name,
@@ -122,7 +140,6 @@ class ChatPPT:
             print(f"Raw content from LLM: {content}") 
             print("I'm a PPT assistant, your PPT generate failed, please retry later..")
             raise Exception("The LLM return invalid result, please retry later..")
-            exit(1)
 
     def generate_ppt(self, content, template=None):
         ppt = Presentation()
@@ -181,9 +198,15 @@ class ChatPPT:
 
 def main():
     args = args_parser()
-    chat_ppt = ChatPPT(args.model_provider, args.api_key, args.model_name, args.ollama_url, args.anthropic_api_key)
+    chat_ppt = ChatPPT(
+        model_provider=args.model_provider, 
+        api_key=args.api_key, 
+        model_name=args.model_name, 
+        ollama_url=args.ollama_url, 
+        anthropic_api_key=args.anthropic_api_key,
+        openai_api_base=args.openai_api_base # Pass the new argument here
+    )
     chat_ppt.robot_print("Hi, I am your PPT assistant.")
-    # CLI does not yet support custom_prompt_instructions, so pass None
     ppt_content = chat_ppt.chatppt(args.topic, args.pages, args.language, custom_prompt_instructions=None)
     chat_ppt.generate_ppt(ppt_content)
 
@@ -214,6 +237,12 @@ def args_parser():
     )
     parser.add_argument( 
         "--anthropic_api_key", type=str, default=None, help="Your Anthropic API key or file path"
+    )
+    parser.add_argument(
+        "--openai_api_base", # Added CLI argument
+        type=str,
+        default=None,
+        help="Optional custom base URL for the OpenAI API. (e.g., http://localhost:8000/v1)"
     )
     parser.add_argument(
         "-u",

@@ -40,7 +40,8 @@ anthropic_api_key = None
 ollama_url = None
 selected_model_name = None
 template_file = None 
-custom_prompt_instructions = None # Initialize custom_prompt_instructions
+custom_prompt_instructions = None
+openai_api_base = None # Initialize openai_api_base
 
 # User selects the Model Provider
 model_provider = st.selectbox("Select Model Provider", ["openai", "ollama", "anthropic"])
@@ -53,7 +54,14 @@ if model_provider == "openai":
         ["gpt-3.5-turbo", "gpt-4", "gpt-4o", "gpt-4-turbo"], 
         key="openai_model_select"
     )
+    openai_api_base = st.text_input( # Added OpenAI API Base URL input
+        "OpenAI API Base URL (Optional)",
+        placeholder="e.g., http://localhost:8000/v1",
+        help="Leave blank to use the default OpenAI API URL.",
+        key="openai_api_base_url"
+    )
     selected_model_name = openai_model_name
+    # Ensure other provider specific params are None
     ollama_url = None 
     anthropic_api_key = None
 
@@ -77,8 +85,10 @@ elif model_provider == "ollama":
             key="ollama_model_text_fallback"
         )
     selected_model_name = ollama_model_name
+    # Ensure other provider specific params are None
     openai_api_key = None
     anthropic_api_key = None
+    openai_api_base = None # Ensure openai_api_base is None for non-OpenAI providers
 
 elif model_provider == "anthropic":
     anthropic_api_key = st.text_input("Enter your Anthropic API Key", key="anthropic_key")
@@ -88,8 +98,11 @@ elif model_provider == "anthropic":
         key="anthropic_model_select"
     )
     selected_model_name = anthropic_model_name
+    # Ensure other provider specific params are None
     openai_api_key = None
     ollama_url = None
+    openai_api_base = None # Ensure openai_api_base is None for non-OpenAI providers
+
 
 # User inputs for the presentation
 topic = st.text_input("Enter the topic for the presentation")
@@ -124,19 +137,22 @@ if generate_button:
     else:
         with st.spinner("Generating Slide..."):
             try:
+                # If openai_api_base is an empty string, treat it as None
+                current_openai_api_base = openai_api_base if openai_api_base and openai_api_base.strip() else None
+
                 chat_ppt = ChatPPT(
                     model_provider=model_provider, 
                     api_key=openai_api_key, 
                     model_name=selected_model_name, 
                     ollama_url=ollama_url, 
-                    anthropic_api_key=anthropic_api_key
+                    anthropic_api_key=anthropic_api_key,
+                    openai_api_base=current_openai_api_base # Pass the potentially None-ified base URL
                 )
-                # Pass custom_prompt_instructions to chatppt method
                 ppt_content = chat_ppt.chatppt(
                     topic, 
                     num_slides, 
                     language, 
-                    custom_prompt_instructions=custom_prompt_instructions # Added
+                    custom_prompt_instructions=custom_prompt_instructions
                 )
             except Exception as e:
                 st.error(f"Error generating Slide content: {e}")

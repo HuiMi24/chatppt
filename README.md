@@ -22,9 +22,10 @@ ChatPPT has been significantly updated with a focus on flexibility and user expe
     *   **OpenAI**: Utilize models like GPT-3.5-turbo, GPT-4, GPT-4o, etc.
     *   **Ollama**: Connect to your local Ollama instance and use any of your downloaded models.
     *   **Anthropic**: Leverage Claude models for content generation.
+*   **Custom OpenAI API Endpoint**: Support for specifying a custom base URL for OpenAI-compatible APIs (e.g., for local LLMs or proxies).
 *   **Enhanced UI for Model Selection**:
     *   **Provider Choice**: Easily switch between OpenAI, Ollama, and Anthropic.
-    *   **OpenAI**: Select specific models (e.g., `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`) from a dropdown.
+    *   **OpenAI**: Select specific models (e.g., `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`) from a dropdown. Input field for custom OpenAI API base URL.
     *   **Ollama**: Dynamically fetches and lists available models from your connected Ollama instance in a dropdown. Provides a text input fallback if models can't be fetched.
     *   **Anthropic**: Input your API key and select from available Claude models (e.g., `claude-3-opus-20240229`, `claude-3-sonnet-20240229`) via a dropdown.
 *   **PowerPoint Template Upload**:
@@ -66,7 +67,7 @@ ChatPPT is powered by various leading LLMs. It's designed to simplify the creati
 
 3.  **Set up LLM Providers:**
     *   **Ollama**: Follow the [official guide](https://ollama.com/) to install Ollama and download your desired models (e.g., `ollama pull llama3`).
-    *   **OpenAI**: Generate your OpenAI API key at <https://platform.openai.com/account/api-keys>. You can provide this key directly in the UI/CLI or store it in a file (e.g., `.token`) and provide the file path.
+    *   **OpenAI**: Generate your OpenAI API key at <https://platform.openai.com/account/api-keys>. You can provide this key directly in the UI/CLI or store it in a file (e.g., `.token`) and provide the file path. If using a custom OpenAI-compatible API, you might use a different key and will need the base URL.
     *   **Anthropic**: Obtain your API key from the [Anthropic Console](https://console.anthropic.com/). Provide this key directly in the UI/CLI or store it in a file.
 
 ## Usage
@@ -82,7 +83,8 @@ The CLI has been updated to support the new model providers and options.
 python chatppt.py -h
 usage: chatppt.py [-h] [-m {openai,ollama,anthropic}] -n MODEL_NAME -t TOPIC
                   [-k API_KEY] [--anthropic_api_key ANTHROPIC_API_KEY]
-                  [-u OLLAMA_URL] [-p PAGES] [-l {cn,en}]
+                  [--openai_api_base OPENAI_API_BASE] [-u OLLAMA_URL]
+                  [-p PAGES] [-l {cn,en}]
 
 I am your PPT assistant, I can help to you generate PPT.
 
@@ -100,6 +102,9 @@ options:
                         Your OpenAI API key or file path
   --anthropic_api_key ANTHROPIC_API_KEY
                         Your Anthropic API key or file path
+  --openai_api_base OPENAI_API_BASE
+                        Optional custom base URL for the OpenAI API. (e.g.,
+                        http://localhost:8000/v1)
   -u OLLAMA_URL, --ollama_url OLLAMA_URL
                         Your ollama url
   -p PAGES, --pages PAGES
@@ -107,14 +112,26 @@ options:
   -l {cn,en}, --language {cn,en}
                         Output language
 ```
+The `--openai_api_base <URL>` argument allows you to specify a custom endpoint for the OpenAI API. This is useful if you are using a proxy, a local LLM server that mimics the OpenAI API (like LocalAI or vLLM's OpenAI-compatible server), or any other service that provides an OpenAI-compatible API.
 
 **CLI Examples:**
 
-*   **OpenAI:**
+*   **OpenAI (Standard):**
     ```bash
     python chatppt.py --model_provider openai --model_name gpt-4o --api_key YOUR_OPENAI_KEY --topic "The Future of AI" --pages 7
     ```
     (Replace `YOUR_OPENAI_KEY` with your actual key or a path to a file containing the key.)
+
+*   **OpenAI (Custom API Base URL):**
+    ```bash
+    # Example using a custom OpenAI-compatible API endpoint
+    python chatppt.py --model_provider openai \
+                     --model_name your_compatible_model_name \
+                     --api_key your_api_key_for_custom_endpoint \
+                     --openai_api_base http://localhost:8000/v1 \
+                     --topic "My Local LLM Presentation"
+    ```
+    (Replace `your_compatible_model_name` and `your_api_key_for_custom_endpoint` accordingly. The API key might be optional or different depending on your custom endpoint's configuration.)
 
 *   **Ollama:**
     ```bash
@@ -145,6 +162,7 @@ The Streamlit UI provides an easy-to-use interface for all features.
         *   **If OpenAI is selected**:
             *   Enter your OpenAI API Key.
             *   Select a specific OpenAI model (e.g., `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`) from the dropdown.
+            *   **OpenAI API Base URL (Optional)**: If you are using an OpenAI-compatible proxy or a local LLM server, enter its base URL here (e.g., `http://localhost:8000/v1`). Leave blank to use the default OpenAI API.
         *   **If Ollama is selected**:
             *   Enter the URL for your running Ollama instance (defaults to `http://localhost:11434`).
             *   Available models will be dynamically fetched and displayed in a dropdown. If fetching fails or the URL is not provided, a text input field will appear to manually enter the Ollama model name.
@@ -154,6 +172,7 @@ The Streamlit UI provides an easy-to-use interface for all features.
     *   **Enter Topic**: Provide the topic for your presentation.
     *   **Number of Pages**: Use the slider to set the desired number of slides.
     *   **Select Language**: Choose between "en" (English) or "cn" (Chinese).
+    *   **Custom Instructions (Optional)**: Add any specific instructions or context for the AI in the text area.
     *   **Upload Template (Optional)**: Click the "Browse files" button to upload a `.pptx` file to be used as a template for your presentation.
     *   **Generate Slide**: Click the "Generate Slide" button.
 
