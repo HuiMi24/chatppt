@@ -1,84 +1,138 @@
-# ChatPPT
+# ChatPPT Studio (React + FastAPI)
 
-ChatPPT is a tool powered by chatgpt/ollama that helps you generate PPT/slide. It supports output in English and Chinese.
+ChatPPT Studio generates new PowerPoint decks, supports live text editing, and applies chat-driven revisions.
 
-## Table of Contents
+- Backend: FastAPI + `python-pptx`
+- Frontend: React (Vite)
+- Dependency manager (backend): `uv`
+- LLM usage is optional. If `OPENAI_API_KEY` is missing, deterministic fallback generation is used.
 
-- [What's New](#whats-new)
-- [What is ChatPPT](#what-is-chatppt)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+## Features
 
-## What's New
+1. Generate a new PPT from topic input
+- `POST /api/generate`
+- Supports `preset`, `audience`, `tone`, `slide_count`, and `language`
+- Returns output path, outline, and theme metadata
 
-ChatPPT now supports Ollama and includes a sample UI.
+2. Parse and edit PPT text content
+- `GET /api/ppt`
+- `POST /api/ppt/update`
 
-![UI demo 1](ui_demo_1.png)
-![UI demo 2](ui_demo_2.png)
+3. Chat-based edits (existing compatibility retained)
+- `POST /api/chat`
 
-## What is ChatPPT
+4. Apply inferred theme to an existing PPT (existing compatibility retained)
+- `POST /api/theme/apply`
 
-ChatPPT is powered by chatgpt/ollama. It can help you generate PPT/slide in English and Chinese.
+## Project Layout
 
-![What is GPT | 600](demo1.png)
-![什么是AWS | 400](demo2.png)
+```text
+chatppt/
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   ├── ppt_service.py
+│   │   ├── chat_service.py
+│   │   └── generator_service.py
+│   ├── tests/test_services.py
+│   └── requirements.txt
+├── frontend/
+│   ├── src/App.jsx
+│   ├── src/App.test.jsx
+│   └── src/styles.css
+└── README.md
+```
 
-## Requirements
+## Environment Variables
 
-Python 3.8.10 or higher
-
-## Installation
-
-### Ollama
-
-Follow the [guide](https://ollama.com/) to install ollama
-
-### OpenAI
-
-Generate your OpenAI API key at <https://platform.openai.com/account/api-keys>
-
-## Usage
-
-1. Install requirements
-
-    ```
-    pip install -r requirements.txt
-    ```
-
-2. Start Streamlit
-
-    ```
-    streamlit run chatppt_ui.py
-    ```
-
-3. Open the Streamlit URL in your browser (<http://localhost:8501>)
-
-![UI](ui.png)
-
-> You can also use ChatPPT in the command line:
+Backend (optional):
 
 ```bash
-> python chatppt.py -h
-usage: chatppt.py [-h] [-m {openai,ollama}] -t TOPIC [-k API_KEY] [-u OLLAMA_URL] [-o OLLAMA_MODEL] [-p PAGES] [-l {cn,en}]
+export OPENAI_API_KEY=your_key
+export OPENAI_MODEL=gpt-3.5-turbo
+# Optional for online demo testing without real LLM calls:
+export FAKE_LLM_RESPONSES=1
+```
 
-I am your PPT assistant, I can help to you generate PPT.
+Frontend (optional):
 
-options:
-  -h, --help            show this help message and exit
-  -m {openai,ollama}, --ai_model {openai,ollama}
-                        Select the AI model
-  -t TOPIC, --topic TOPIC
-                        Your topic name
-  -k API_KEY, --api_key API_KEY
-                        Your api key file path
-  -u OLLAMA_URL, --ollama_url OLLAMA_URL
-                        Your ollama url
-  -o OLLAMA_MODEL, --ollama_model OLLAMA_MODEL
-                        Specify the Ollama model to use
-  -p PAGES, --pages PAGES
-                        How many slides to generate
-  -l {cn,en}, --language {cn,en}
-                        Output language
+```bash
+export VITE_API_BASE=http://127.0.0.1:8000
+```
+
+## Run Locally
+
+### 1) Start backend
+
+```bash
+cd backend
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 2) Start frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`.
+
+## API Example
+
+### `POST /api/generate`
+
+Request:
+
+```json
+{
+  "topic": "AI customer support product roadmap",
+  "preset": "Tech",
+  "audience": "Executive team",
+  "tone": "Concise",
+  "slide_count": 6,
+  "language": "en-US",
+  "output_path": "generated/ai-roadmap.pptx"
+}
+```
+
+Response:
+
+```json
+{
+  "output_path": "generated/ai-roadmap.pptx",
+  "outline": [{ "title": "...", "bullets": ["..."] }],
+  "theme": {
+    "name": "preset-tech",
+    "font_name": "Segoe UI",
+    "title_size_pt": 38,
+    "body_size_pt": 19
+  }
+}
+```
+
+Notes:
+- `preset` is optional (`Business`, `Tech`, `Education`, `Marketing`).
+- Explicit `audience`, `tone`, `language`, and `slide_count` still work as before and take precedence over preset defaults.
+
+## Quality Checks
+
+Backend tests:
+
+```bash
+cd backend
+PYTHONPATH=. uv run python -m unittest tests/test_services.py
+```
+
+Frontend tests and build:
+
+```bash
+cd frontend
+npm test
+npm run build
+```

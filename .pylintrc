@@ -1,0 +1,29 @@
+[MASTER]
+ignore-patterns=^frontend/.*,^backend/generated/.*
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    broad-exception-caught,
+    broad-exception-raised,
+    import-outside-toplevel,
+    line-too-long,
+    raise-missing-from,
+    wrong-import-order,
+    invalid-name,
+    possibly-used-before-assignment,
+    inconsistent-return-statements,
+    unreachable,
+    no-else-return,
+    consider-using-sys-exit,
+    consider-using-with,
+    consider-using-in
+
+[TYPECHECK]
+ignored-modules=openai,pptx,pptx.dml.color,pptx.enum.shapes,pptx.util,fastapi,fastapi.middleware.cors,fastapi.staticfiles,pydantic,streamlit,ollama
+
+[FORMAT]
+max-line-length=120
