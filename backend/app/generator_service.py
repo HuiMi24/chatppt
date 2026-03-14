@@ -52,6 +52,15 @@ class GeneratorService:
     def __init__(self, ppt_service: PPTService):
         self.ppt_service = ppt_service
 
+    def apply_theme_preset(self, path: str, preset: str, output_path: str | None = None) -> tuple[str, ThemeConfig]:
+        prs = Presentation(path)
+        req = GenerateRequest(topic="theme-apply", preset=preset)
+        theme = self._select_theme(req, [])
+        self.ppt_service.apply_theme_to_presentation(prs, theme)
+        save_path = output_path or self.ppt_service._default_output(path, f"preset-{theme.name}")
+        prs.save(save_path)
+        return save_path, theme
+
     def generate(self, req: GenerateRequest) -> tuple[str, List[OutlineSlide], ThemeConfig]:
         if os.getenv("FAKE_LLM_RESPONSES", "0") == "1":
             outline = self._fake_llm_outline(req)

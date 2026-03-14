@@ -136,6 +136,25 @@ export default function App() {
     }
   }
 
+  const applyPresetImmediately = async (presetName) => {
+    setForm((f) => ({ ...f, preset: presetName }))
+    if (!pptPath) return
+
+    setLoading(true)
+    try {
+      const data = await api('/api/theme/apply-preset', {
+        method: 'POST',
+        body: JSON.stringify({ path: pptPath, preset: presetName }),
+      })
+      await loadPPT(data.output_path)
+      setNotice(`Preset switched to ${presetName} and applied immediately.`)
+    } catch (e) {
+      setNotice(`Apply preset failed: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const generatePPT = async () => {
     if (!form.topic.trim()) return
     setLoading(true)
@@ -323,27 +342,6 @@ export default function App() {
 
           <div className="field-grid">
             <label>
-              Theme preset
-              <div className="theme-cards">
-                {PRESET_OPTIONS.map((option) => (
-                  <button
-                    type="button"
-                    key={option.name}
-                    data-testid={`preset-${option.name.toLowerCase()}`}
-                    className={`theme-card ${form.preset === option.name ? 'active' : ''}`}
-                    onClick={() => setForm((f) => ({ ...f, preset: option.name }))}
-                  >
-                    <div className="theme-swatches">
-                      <span style={{ background: option.colors[0] }} />
-                      <span style={{ background: option.colors[1] }} />
-                    </div>
-                    <strong>{option.name}</strong>
-                    <small>{option.desc}</small>
-                  </button>
-                ))}
-              </div>
-            </label>
-            <label>
               <span className="label-row">
                 Audience
                 <span className="field-help" title="Who will read this deck? Example: leadership team, technical audience, students.">ⓘ</span>
@@ -408,6 +406,28 @@ export default function App() {
                   Download .pptx
                 </button>
               )}
+            </div>
+          </div>
+
+          <div className="preset-inline">
+            <span>Theme preset:</span>
+            <div className="theme-cards compact">
+              {PRESET_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option.name}
+                  data-testid={`preset-${option.name.toLowerCase()}`}
+                  className={`theme-card ${form.preset === option.name ? 'active' : ''}`}
+                  onClick={() => applyPresetImmediately(option.name)}
+                  disabled={loading}
+                >
+                  <div className="theme-swatches">
+                    <span style={{ background: option.colors[0] }} />
+                    <span style={{ background: option.colors[1] }} />
+                  </div>
+                  <strong>{option.name}</strong>
+                </button>
+              ))}
             </div>
           </div>
 

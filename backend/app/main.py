@@ -13,6 +13,7 @@ from .models import (
     GenerateRequest,
     GenerateResponse,
     ThemeApplyRequest,
+    ThemePresetApplyRequest,
     UpdateRequest,
 )
 from .ppt_service import PPTService
@@ -119,6 +120,23 @@ def chat_edit(req: ChatRequest):
 def apply_theme(req: ThemeApplyRequest):
     try:
         output, theme = ppt_service.apply_theme(req.path, req.output_path)
+        return {
+            "output_path": output,
+            "theme": {
+                "name": theme.name,
+                "font_name": theme.font_name,
+                "title_size_pt": theme.title_size_pt,
+                "body_size_pt": theme.body_size_pt,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/theme/apply-preset")
+def apply_theme_preset(req: ThemePresetApplyRequest):
+    try:
+        output, theme = generator_service.apply_theme_preset(req.path, req.preset, req.output_path)
         return {
             "output_path": output,
             "theme": {

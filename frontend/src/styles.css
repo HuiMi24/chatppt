@@ -119,6 +119,33 @@ textarea { min-height: 84px; resize: vertical; }
   gap: 8px;
 }
 
+.preset-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.preset-inline > span {
+  color: #475569;
+  font-size: 13px;
+  min-width: 92px;
+}
+
+.theme-cards.compact {
+  margin-top: 0;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  flex: 1;
+}
+
+.theme-cards.compact .theme-card {
+  padding: 6px 8px;
+}
+
+.theme-cards.compact .theme-card small {
+  display: none;
+}
+
 .theme-card {
   text-align: left;
   background: #f8fafc;
