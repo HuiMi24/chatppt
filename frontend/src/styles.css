@@ -60,7 +60,7 @@ body {
 
 .main-grid {
   display: grid;
-  grid-template-columns: 330px 1fr 360px;
+  grid-template-columns: 330px 1fr;
   gap: 14px;
   align-items: start;
 }
@@ -223,8 +223,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   color: #d8b4fe;
 }
 
+.chat-panel-bottom {
+  margin-top: 14px;
+}
+
 .chat-box {
-  height: 62vh;
+  height: 34vh;
+  min-height: 240px;
   overflow: auto;
   border-radius: 12px;
   padding: 10px;

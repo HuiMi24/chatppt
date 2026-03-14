@@ -307,25 +307,25 @@ export default function App() {
             </div>
           )}
         </section>
-
-        <section className="panel chat-panel">
-          <h2>Chat Edits</h2>
-          <div className="chat-box">
-            {messages.map((m, i) => (
-              <div key={i} className={`msg ${m.role}`}>{m.text}</div>
-            ))}
-            {loading && <div className="msg assistant">Processing...</div>}
-          </div>
-          <div className="chat-input-row">
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Example: change slide 3 title to Growth Loop"
-            />
-            <button onClick={sendChat} disabled={loading || !doc}>Send</button>
-          </div>
-        </section>
       </main>
+
+      <section className="panel chat-panel chat-panel-bottom">
+        <h2>Chat Edits</h2>
+        <div className="chat-box">
+          {messages.map((m, i) => (
+            <div key={i} className={`msg ${m.role}`}>{m.text}</div>
+          ))}
+          {loading && <div className="msg assistant">Processing...</div>}
+        </div>
+        <div className="chat-input-row">
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Example: change slide 3 title to Growth Loop"
+          />
+          <button onClick={sendChat} disabled={loading || !doc}>Send</button>
+        </div>
+      </section>
     </div>
   )
 }
