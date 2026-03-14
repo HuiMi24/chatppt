@@ -1,10 +1,30 @@
-# ChatPPT (React + FastAPI)
+# ChatPPT Studio (React + FastAPI)
 
-本项目已扩展为 **前后端分离**：
-- 前端：React(Vite) Web UI，支持浏览/编辑 PPT 文本、聊天改 PPT、自动主题应用
-- 后端：FastAPI + python-pptx，提供解析、编辑、聊天、主题 API
+把原先的 Web Editor 升级为 **AI 生成 PPT + 在线编辑 + 聊天改稿** 的产品体验。
 
-> 原有 `chatppt.py` / `chatppt_ui.py` 仍保留，可继续使用。
+- 后端：FastAPI + python-pptx（保留原有编辑接口）
+- 前端：React (Vite)
+- Python 依赖管理：**uv**
+- LLM Key 可选：有 key 用 LLM 产出大纲；无 key 自动 fallback 模板生成
+
+## 功能概览
+
+1. **生成新 PPT**（不是只改已有文件）
+   - `POST /api/generate`
+   - 输入主题/受众/语气/页数/语言
+   - 自动输出新 `.pptx`，并返回结构化大纲和主题信息
+
+2. **在线预览并继续编辑文本**
+   - `GET /api/ppt`
+   - `POST /api/ppt/update`
+
+3. **聊天修改 PPT**（兼容原能力）
+   - `POST /api/chat`
+
+4. **自动主题应用**（兼容原能力）
+   - `POST /api/theme/apply`
+
+---
 
 ## 目录结构
 
@@ -12,70 +32,51 @@
 chatppt/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            # FastAPI 入口
-│   │   ├── models.py          # 请求/响应模型
-│   │   ├── ppt_service.py     # PPT解析、编辑、主题应用
-│   │   └── chat_service.py    # 聊天规划（LLM + rule fallback）
-│   ├── tests/test_services.py # 最小测试
-│   ├── examples/demo_api.sh   # API示例脚本
+│   │   ├── main.py               # FastAPI 入口
+│   │   ├── models.py
+│   │   ├── ppt_service.py        # 解析/编辑/主题
+│   │   ├── chat_service.py       # 聊天改稿计划
+│   │   └── generator_service.py  # 新增：PPT 生成服务（LLM + fallback）
+│   ├── tests/test_services.py    # 包含 generate fallback 最小测试
 │   └── requirements.txt
 ├── frontend/
-│   ├── src/App.jsx            # 页面编辑 + 聊天窗口
-│   └── package.json
-├── chatppt.py
-└── chatppt_ui.py
+│   ├── src/App.jsx               # 生成器 + 编辑区 + 聊天区
+│   └── src/styles.css            # 现代化深色渐变 UI
+└── README.md
 ```
 
-## 功能说明
-
-### 1) 解析 PPT 为结构化 JSON
-- `GET /api/ppt?path=/abs/path/to/file.pptx`
-- 返回：`slides -> shapes(text)`，包含 `slide_index/shape_index/role/title/body/text`
-
-### 2) 按指令编辑并保存
-- `POST /api/ppt/update`
-- 入参：`path + edits[]`
-- 输出：新的 `output_path`
-
-### 3) 聊天改 PPT（支持无 Key fallback）
-- `POST /api/chat`
-- 有 `OPENAI_API_KEY` 时优先调用 LLM 生成编辑计划
-- 无 key 时使用规则解析（例如：`把第3页标题改为xxx`）
-
-### 4) 主题生成与应用
-- `POST /api/theme/apply`
-- 根据 PPT 文本关键词推断主题（corporate/playful/tech/clean）
-- 自动应用配色、字体、字号、背景
+---
 
 ## 环境变量
 
-后端可选：
+后端可选（不填也可运行）：
 
 ```bash
-export OPENAI_API_KEY=your_key        # 可选，不设则走fallback
-export OPENAI_MODEL=gpt-3.5-turbo     # 可选
+export OPENAI_API_KEY=your_key         # 可选
+export OPENAI_MODEL=gpt-3.5-turbo      # 可选
 ```
 
 前端可选：
 
 ```bash
-# 默认 http://127.0.0.1:8000
 export VITE_API_BASE=http://127.0.0.1:8000
 ```
 
-## 本地启动
+---
 
-### 后端
+## 启动方式（uv）
+
+### 1) 启动后端（FastAPI）
 
 ```bash
 cd backend
-python -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv pip install -r requirements.txt
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 前端
+### 2) 启动前端（React）
 
 ```bash
 cd frontend
@@ -83,23 +84,71 @@ npm install
 npm run dev
 ```
 
-打开 `http://127.0.0.1:5173`。
+打开：`http://127.0.0.1:5173`
 
-## 使用流程（Web）
+---
 
-1. 在输入框填入本机 PPT 绝对路径
-2. 点击“加载”，查看每页可编辑文本
-3. 手动改标题/正文后点击“保存文本修改”
-4. 在聊天框输入自然语言（如“把第3页标题改为增长战略”）并发送
-5. 点击“自动应用主题”可根据内容自动套用主题
+## 接口说明
 
-## 测试与检查
+### POST /api/generate
+
+生成全新的 PPT。
+
+**Request JSON**
+
+```json
+{
+  "topic": "AI 客服产品路线图",
+  "audience": "管理层",
+  "tone": "专业",
+  "slide_count": 6,
+  "language": "zh-CN",
+  "output_path": "generated/ai-roadmap.pptx"
+}
+```
+
+**Response JSON**
+
+```json
+{
+  "output_path": "generated/ai-roadmap.pptx",
+  "outline": [
+    { "title": "背景与价值", "bullets": ["..."] }
+  ],
+  "theme": {
+    "name": "tech",
+    "font_name": "Segoe UI",
+    "title_size_pt": 38,
+    "body_size_pt": 20
+  }
+}
+```
+
+### GET /api/ppt?path=/abs/path/file.pptx
+
+解析 PPT，返回可编辑文本结构。
+
+### POST /api/ppt/update
+
+按 `edits` 批量更新文本并保存新文件。
+
+### POST /api/chat
+
+继续对话修改 PPT（有 key 走 LLM，无 key 走规则 fallback）。
+
+### POST /api/theme/apply
+
+基于文本语义推断主题并应用。
+
+---
+
+## 质量检查
 
 ### 后端测试
 
 ```bash
 cd backend
-PYTHONPATH=. python -m unittest tests/test_services.py
+PYTHONPATH=. uv run python -m unittest tests/test_services.py
 ```
 
 ### 前端构建
@@ -109,15 +158,10 @@ cd frontend
 npm run build
 ```
 
-### API 示例脚本
+---
 
-```bash
-cd backend
-bash examples/demo_api.sh http://127.0.0.1:8000 /abs/path/to/demo.pptx
-```
+## 说明
 
-## 已知限制
-
-- 目前编辑粒度基于 shape 文本，复杂富文本(run级样式)不会完全保留
-- fallback 规则解析仅覆盖常见中英文表达
-- 主题策略是启发式关键词匹配，不是设计系统级智能排版
+- 保留原有 `/api/ppt`、`/api/ppt/update`、`/api/chat`、`/api/theme/apply` 兼容能力。
+- `generator_service.py` 独立负责「大纲生成 + 新 PPT 创建 + 主题自动应用」。
+- fallback 逻辑确保无 LLM key 也可稳定生成可编辑 PPT。

@@ -2,10 +2,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .chat_service import ChatPlanner
-from .models import ChatRequest, ChatResponse, ThemeApplyRequest, UpdateRequest
+from .generator_service import GeneratorService
+from .models import (
+    ChatRequest,
+    ChatResponse,
+    GenerateRequest,
+    GenerateResponse,
+    ThemeApplyRequest,
+    UpdateRequest,
+)
 from .ppt_service import PPTService
 
-app = FastAPI(title="ChatPPT API", version="0.1.0")
+app = FastAPI(title="ChatPPT API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,11 +25,30 @@ app.add_middleware(
 
 ppt_service = PPTService()
 chat_planner = ChatPlanner(ppt_service)
+generator_service = GeneratorService(ppt_service)
 
 
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@app.post("/api/generate", response_model=GenerateResponse)
+def generate_ppt(req: GenerateRequest):
+    try:
+        output_path, outline, theme = generator_service.generate(req)
+        return GenerateResponse(
+            output_path=output_path,
+            outline=outline,
+            theme={
+                "name": theme.name,
+                "font_name": theme.font_name,
+                "title_size_pt": theme.title_size_pt,
+                "body_size_pt": theme.body_size_pt,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/ppt")

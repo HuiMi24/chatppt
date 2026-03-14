@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class ShapeText(BaseModel):
@@ -47,3 +48,23 @@ class ChatResponse(BaseModel):
     plan: List[EditInstruction]
     output_path: str
     used_llm: bool
+
+
+class OutlineSlide(BaseModel):
+    title: str
+    bullets: List[str] = Field(default_factory=list)
+
+
+class GenerateRequest(BaseModel):
+    topic: str
+    audience: Optional[str] = None
+    tone: Optional[str] = None
+    slide_count: int = Field(default=6, ge=3, le=20)
+    language: Optional[str] = None
+    output_path: Optional[str] = None
+
+
+class GenerateResponse(BaseModel):
+    output_path: str
+    outline: List[OutlineSlide]
+    theme: dict

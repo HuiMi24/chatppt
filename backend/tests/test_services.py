@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -5,7 +6,8 @@ from pathlib import Path
 from pptx import Presentation
 
 from app.chat_service import ChatPlanner
-from app.models import EditInstruction
+from app.generator_service import GeneratorService
+from app.models import EditInstruction, GenerateRequest
 from app.ppt_service import PPTService
 
 
@@ -22,6 +24,7 @@ class TestPPTServices(unittest.TestCase):
 
         self.ppt = PPTService()
         self.chat = ChatPlanner(self.ppt)
+        self.generator = GeneratorService(self.ppt)
 
     def tearDown(self):
         self.tmpdir.cleanup()
@@ -49,6 +52,26 @@ class TestPPTServices(unittest.TestCase):
         plan, used_llm = self.chat.build_plan(str(self.base), "把第1页标题改为年度复盘")
         self.assertFalse(used_llm)
         self.assertEqual(len(plan), 1)
+
+    def test_generate_fallback(self):
+        os.environ.pop("OPENAI_API_KEY", None)
+
+        req = GenerateRequest(
+            topic="AI产品路线图",
+            audience="管理层",
+            tone="专业",
+            slide_count=6,
+            language="zh-CN",
+            output_path=str(Path(self.tmpdir.name) / "generated.pptx"),
+        )
+        output_path, outline, theme = self.generator.generate(req)
+
+        self.assertTrue(Path(output_path).exists())
+        self.assertEqual(len(outline), 6)
+        self.assertTrue(theme.name in {"corporate", "playful", "tech", "clean"})
+
+        doc = self.ppt.parse_ppt(output_path)
+        self.assertGreaterEqual(doc.slide_count, 7)  # cover + outline slides
 
 
 if __name__ == "__main__":
