@@ -59,6 +59,7 @@ class GenerateRequest(BaseModel):
     topic: str
     audience: Optional[str] = None
     tone: Optional[str] = None
+    preset: Optional[str] = None
     slide_count: int = Field(default=6, ge=3, le=20)
     language: Optional[str] = None
     output_path: Optional[str] = None

@@ -85,12 +85,12 @@ label {
   margin-bottom: 10px;
 }
 
-input, textarea, button {
+input, textarea, select, button {
   width: 100%;
   font: inherit;
 }
 
-input, textarea {
+input, textarea, select {
   margin-top: 6px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: rgba(15, 23, 42, 0.75);

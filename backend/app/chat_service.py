@@ -29,9 +29,9 @@ class ChatPlanner:
         doc = self.ppt_service.parse_ppt(path).model_dump()
 
         prompt = (
-            "你是PPT编辑规划器。给定用户请求与PPT结构，输出JSON数组，"
-            "每项字段: slide_index(int), shape_index(int), new_text(str)。"
-            "只输出JSON，不要解释。"
+            "You are a PPT edit planner. Given user intent and PPT structure, return a JSON array only. "
+            "Each item must include: slide_index(int), shape_index(int), new_text(str). "
+            "Do not include explanations."
         )
 
         resp = openai.ChatCompletion.create(

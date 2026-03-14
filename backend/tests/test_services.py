@@ -13,6 +13,7 @@ from app.ppt_service import PPTService
 
 class TestPPTServices(unittest.TestCase):
     def setUp(self):
+        self.previous_api_key = os.environ.pop("OPENAI_API_KEY", None)
         self.tmpdir = tempfile.TemporaryDirectory()
         self.base = Path(self.tmpdir.name) / "sample.pptx"
 
@@ -27,6 +28,8 @@ class TestPPTServices(unittest.TestCase):
         self.generator = GeneratorService(self.ppt)
 
     def tearDown(self):
+        if self.previous_api_key is not None:
+            os.environ["OPENAI_API_KEY"] = self.previous_api_key
         self.tmpdir.cleanup()
 
     def test_parse_and_edit(self):
@@ -53,9 +56,44 @@ class TestPPTServices(unittest.TestCase):
         self.assertFalse(used_llm)
         self.assertEqual(len(plan), 1)
 
-    def test_generate_fallback(self):
-        os.environ.pop("OPENAI_API_KEY", None)
+    def test_generate_fallback_with_preset(self):
+        req = GenerateRequest(
+            topic="Growth Strategy",
+            preset="Marketing",
+            slide_count=6,
+            output_path=str(Path(self.tmpdir.name) / "generated-marketing.pptx"),
+        )
+        output_path, outline, theme = self.generator.generate(req)
 
+        self.assertTrue(Path(output_path).exists())
+        self.assertEqual(len(outline), 6)
+        self.assertEqual(theme.name, "preset-marketing")
+        self.assertIn("Campaign", outline[0].title)
+
+        doc = self.ppt.parse_ppt(output_path)
+        self.assertGreaterEqual(doc.slide_count, 7)  # cover + outline slides
+
+    def test_generate_with_language_field(self):
+        req = GenerateRequest(
+            topic="Customer Support Workflow",
+            language="ja-JP",
+            slide_count=6,
+            output_path=str(Path(self.tmpdir.name) / "generated-ja.pptx"),
+        )
+        output_path, outline, _ = self.generator.generate(req)
+
+        self.assertTrue(Path(output_path).exists())
+        self.assertEqual(len(outline), 6)
+        self.assertTrue(any("\u3040" <= c <= "\u30ff" for c in outline[0].title))
+
+    def test_chat_fallback_parser_basic_case(self):
+        plan, used_llm = self.chat.build_plan(str(self.base), "change slide 1 title to Annual Review")
+        self.assertFalse(used_llm)
+        self.assertEqual(len(plan), 1)
+        self.assertEqual(plan[0].slide_index, 0)
+        self.assertEqual(plan[0].new_text, "Annual Review")
+
+    def test_generate_fallback(self):
         req = GenerateRequest(
             topic="AI产品路线图",
             audience="管理层",
@@ -69,7 +107,6 @@ class TestPPTServices(unittest.TestCase):
         self.assertTrue(Path(output_path).exists())
         self.assertEqual(len(outline), 6)
         self.assertTrue(theme.name in {"corporate", "playful", "tech", "clean"})
-
         doc = self.ppt.parse_ppt(output_path)
         self.assertGreaterEqual(doc.slide_count, 7)  # cover + outline slides
 

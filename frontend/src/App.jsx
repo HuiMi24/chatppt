@@ -4,6 +4,14 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   `${window.location.protocol}//${window.location.hostname}:8000`
 
+const PRESET_OPTIONS = ['Business', 'Tech', 'Education', 'Marketing']
+
+const LANGUAGE_OPTIONS = [
+  { label: 'English', value: 'en-US' },
+  { label: 'Chinese', value: 'zh-CN' },
+  { label: 'Japanese', value: 'ja-JP' },
+]
+
 async function api(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
@@ -20,8 +28,9 @@ const initialForm = {
   topic: '',
   audience: '',
   tone: '',
+  preset: 'Business',
   slide_count: 6,
-  language: 'zh-CN',
+  language: 'en-US',
 }
 
 export default function App() {
@@ -32,7 +41,7 @@ export default function App() {
   const [notice, setNotice] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: '👋 输入主题后点击「生成PPT」，随后可以继续聊天修改内容。' },
+    { role: 'assistant', text: 'Enter a topic and click "Generate PPT". Then continue editing through chat.' },
   ])
 
   const titleAndBody = useMemo(() => {
@@ -64,6 +73,7 @@ export default function App() {
         topic: form.topic.trim(),
         audience: form.audience || undefined,
         tone: form.tone || undefined,
+        preset: form.preset || undefined,
         language: form.language || undefined,
       }
       const data = await api('/api/generate', {
@@ -71,12 +81,12 @@ export default function App() {
         body: JSON.stringify(payload),
       })
       await loadPPT(data.output_path)
-      setNotice(`已生成并加载：${data.output_path}（主题：${data.theme.name}）`)
+      setNotice(`Generated and loaded: ${data.output_path} (Theme: ${data.theme.name})`)
       setMessages((m) => [
         ...m,
         {
           role: 'assistant',
-          text: `已生成 ${data.outline.length} 页大纲，主题风格 ${data.theme.name}。你可以继续编辑或聊天改稿。`,
+          text: `Generated ${data.outline.length} slides using theme ${data.theme.name}. You can keep editing manually or by chat.`,
         },
       ])
     } catch (e) {
@@ -112,7 +122,7 @@ export default function App() {
         body: JSON.stringify({ path: pptPath, edits }),
       })
       await loadPPT(data.output_path)
-      setNotice(`文本修改已保存：${data.output_path}`)
+      setNotice(`Text edits saved: ${data.output_path}`)
     } catch (e) {
       setNotice(e.message)
     } finally {
@@ -135,12 +145,12 @@ export default function App() {
         ...m,
         {
           role: 'assistant',
-          text: `已执行 ${data.plan.length} 条修改（${data.used_llm ? 'LLM' : 'fallback'}），输出：${data.output_path}`,
+          text: `Applied ${data.plan.length} edits (${data.used_llm ? 'LLM' : 'fallback'}) and saved to ${data.output_path}.`,
         },
       ])
       await loadPPT(data.output_path)
     } catch (e) {
-      setMessages((m) => [...m, { role: 'assistant', text: `失败：${e.message}` }])
+      setMessages((m) => [...m, { role: 'assistant', text: `Failed: ${e.message}` }])
     } finally {
       setLoading(false)
     }
@@ -151,7 +161,7 @@ export default function App() {
       <header className="topbar">
         <div>
           <h1>ChatPPT Studio</h1>
-          <p>AI 生成演示稿 · 在线预览编辑 · 对话持续改稿</p>
+          <p>AI presentation generation, live preview editing, and chat-based revisions</p>
         </div>
         <span className="badge">FastAPI + React</span>
       </header>
@@ -160,27 +170,49 @@ export default function App() {
 
       <main className="main-grid">
         <aside className="panel generator-panel">
-          <h2>生成器</h2>
+          <h2>Generator</h2>
           <label>
-            主题 / 要求 *
+            Topic / Prompt *
             <textarea
               value={form.topic}
-              placeholder="例如：给投资人汇报 AI 客服产品路线图"
+              placeholder="Example: Q4 product strategy for AI customer support"
               onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))}
             />
           </label>
 
           <div className="field-grid">
             <label>
-              受众
-              <input value={form.audience} onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))} placeholder="如：管理层、学生" />
+              Preset
+              <select
+                data-testid="preset-select"
+                value={form.preset}
+                onChange={(e) => setForm((f) => ({ ...f, preset: e.target.value }))}
+              >
+                {PRESET_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              语气
-              <input value={form.tone} onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))} placeholder="如：专业、轻松" />
+              Audience
+              <input
+                value={form.audience}
+                onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
+                placeholder="e.g. leadership team, students"
+              />
             </label>
             <label>
-              页数
+              Tone
+              <input
+                value={form.tone}
+                onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))}
+                placeholder="e.g. concise, formal"
+              />
+            </label>
+            <label>
+              Slides
               <input
                 type="number"
                 min={3}
@@ -190,29 +222,39 @@ export default function App() {
               />
             </label>
             <label>
-              语言
-              <input value={form.language} onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))} placeholder="zh-CN / en" />
+              Language
+              <select
+                data-testid="language-select"
+                value={form.language}
+                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
+              >
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
           <button className="primary-btn" onClick={generatePPT} disabled={loading || !form.topic.trim()}>
-            {loading ? '生成中...' : '生成PPT'}
+            {loading ? 'Generating...' : 'Generate PPT'}
           </button>
-          <p className="hint">生成完成后会自动加载到右侧编辑区。</p>
+          <p className="hint">The generated deck will load in the editor automatically.</p>
         </aside>
 
         <section className="panel editor-panel">
           <div className="panel-head">
-            <h2>预览与文本编辑</h2>
-            <button className="ghost-btn" onClick={saveManualEdits} disabled={loading || !doc}>保存文本修改</button>
+            <h2>Preview and Text Editing</h2>
+            <button className="ghost-btn" onClick={saveManualEdits} disabled={loading || !doc}>Save Text Changes</button>
           </div>
 
-          {!doc && <div className="skeleton">先在左侧输入主题并生成 PPT。</div>}
+          {!doc && <div className="skeleton">Start by entering a topic and generating a PPT from the left panel.</div>}
           {doc && (
             <div className="slides-list">
               {titleAndBody.map((slide) => (
                 <article className="slide-card" key={slide.slide_index}>
-                  <h3>第 {slide.slide_index + 1} 页</h3>
+                  <h3>Slide {slide.slide_index + 1}</h3>
                   {slide.editableShapes.map((sh) => (
                     <label key={sh.shape_index}>
                       <span>{sh.role} · shape #{sh.shape_index}</span>
@@ -226,20 +268,20 @@ export default function App() {
         </section>
 
         <section className="panel chat-panel">
-          <h2>聊天改稿</h2>
+          <h2>Chat Edits</h2>
           <div className="chat-box">
             {messages.map((m, i) => (
               <div key={i} className={`msg ${m.role}`}>{m.text}</div>
             ))}
-            {loading && <div className="msg assistant">处理中...</div>}
+            {loading && <div className="msg assistant">Processing...</div>}
           </div>
           <div className="chat-input-row">
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="例如：把第3页标题改为增长飞轮"
+              placeholder="Example: change slide 3 title to Growth Loop"
             />
-            <button onClick={sendChat} disabled={loading || !doc}>发送</button>
+            <button onClick={sendChat} disabled={loading || !doc}>Send</button>
           </div>
         </section>
       </main>
