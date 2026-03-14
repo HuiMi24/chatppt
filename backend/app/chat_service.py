@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List
+from typing import List, Tuple
 
 from .models import EditInstruction
 from .ppt_service import PPTService
@@ -10,7 +10,7 @@ class ChatPlanner:
     def __init__(self, ppt_service: PPTService):
         self.ppt_service = ppt_service
 
-    def build_plan(self, path: str, message: str) -> tuple[List[EditInstruction], bool]:
+    def build_plan(self, path: str, message: str) -> Tuple[List[EditInstruction], bool]:
         if os.getenv("FAKE_LLM_RESPONSES", "0") == "1":
             plan = self._fake_llm_plan(path, message)
             if plan:
