@@ -30,6 +30,7 @@ async function api(path, options = {}) {
 }
 
 const toAbsolute = (url) => (url?.startsWith('http') ? url : `${API_BASE}${url}`)
+const withVersion = (url, version) => `${toAbsolute(url)}${toAbsolute(url).includes('?') ? '&' : '?'}v=${version}`
 
 const initialForm = {
   topic: '',
@@ -51,6 +52,7 @@ export default function App() {
   const [notice, setNotice] = useState('')
 
   const [previewImages, setPreviewImages] = useState([])
+  const [previewVersion, setPreviewVersion] = useState(Date.now())
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(() => Number(localStorage.getItem('chatppt:selectedSlide') || 0))
   const [dirtySlides, setDirtySlides] = useState(() => new Set())
 
@@ -128,6 +130,7 @@ export default function App() {
       setIsDirty(false)
       const preview = await api(`/api/ppt/preview?path=${encodeURIComponent(path)}`)
       setPreviewImages(preview.images || [])
+      setPreviewVersion(Date.now())
     } finally {
       setLoading(false)
     }
@@ -345,14 +348,22 @@ export default function App() {
                 Audience
                 <span className="field-help" title="Who will read this deck? Example: leadership team, technical audience, students.">ⓘ</span>
               </span>
-              <input value={form.audience} onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))} />
+              <input
+                value={form.audience}
+                placeholder="e.g. leadership team, investors, new users"
+                onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
+              />
             </label>
             <label>
               <span className="label-row">
                 Tone
                 <span className="field-help" title="Writing style for the slides. Example: concise, formal, persuasive, friendly.">ⓘ</span>
               </span>
-              <input value={form.tone} onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))} />
+              <input
+                value={form.tone}
+                placeholder="e.g. concise, persuasive, formal, friendly"
+                onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))}
+              />
             </label>
             <label>
               Slides
@@ -411,7 +422,7 @@ export default function App() {
                     className={`preview-thumb ${selectedSlideIndex === idx ? 'active' : ''}`}
                     onClick={() => setSelectedSlideIndex(idx)}
                   >
-                    <img src={toAbsolute(img)} alt={`Slide preview ${idx + 1}`} />
+                    <img src={withVersion(img, previewVersion)} alt={`Slide preview ${idx + 1}`} />
                     <span>
                       Slide {idx + 1}
                       {dirtySlides.has(idx) && <em className="dirty-tag"> • modified</em>}
@@ -431,7 +442,7 @@ export default function App() {
                     </div>
                     {previewImages[selectedSlide.slide_index] && (
                       <div className="selected-preview">
-                        <img src={toAbsolute(previewImages[selectedSlide.slide_index])} alt={`Selected slide ${selectedSlide.slide_index + 1}`} />
+                        <img src={withVersion(previewImages[selectedSlide.slide_index], previewVersion)} alt={`Selected slide ${selectedSlide.slide_index + 1}`} />
                       </div>
                     )}
                     {selectedSlide.editableShapes.map((sh) => (
