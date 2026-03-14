@@ -44,6 +44,12 @@ class ThemeApplyRequest(BaseModel):
     output_path: Optional[str] = None
 
 
+class ThemePresetApplyRequest(BaseModel):
+    path: str
+    preset: str
+    output_path: Optional[str] = None
+
+
 class ChatResponse(BaseModel):
     plan: List[EditInstruction]
     output_path: str

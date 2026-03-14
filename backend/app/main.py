@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .chat_service import ChatPlanner
@@ -12,6 +13,7 @@ from .models import (
     GenerateRequest,
     GenerateResponse,
     ThemeApplyRequest,
+    ThemePresetApplyRequest,
     UpdateRequest,
 )
 from .ppt_service import PPTService
@@ -78,6 +80,19 @@ def preview_ppt(path: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/ppt/download")
+def download_ppt(path: str):
+    try:
+        p = Path(path)
+        if not p.exists() or not p.is_file():
+            raise HTTPException(status_code=404, detail="PPT file not found")
+        return FileResponse(path=str(p), filename=p.name, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/ppt/update")
 def update_ppt(req: UpdateRequest):
     try:
@@ -105,6 +120,23 @@ def chat_edit(req: ChatRequest):
 def apply_theme(req: ThemeApplyRequest):
     try:
         output, theme = ppt_service.apply_theme(req.path, req.output_path)
+        return {
+            "output_path": output,
+            "theme": {
+                "name": theme.name,
+                "font_name": theme.font_name,
+                "title_size_pt": theme.title_size_pt,
+                "body_size_pt": theme.body_size_pt,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/theme/apply-preset")
+def apply_theme_preset(req: ThemePresetApplyRequest):
+    try:
+        output, theme = generator_service.apply_theme_preset(req.path, req.preset, req.output_path)
         return {
             "output_path": output,
             "theme": {
