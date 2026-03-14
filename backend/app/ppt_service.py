@@ -52,6 +52,12 @@ class PPTService:
             shape = slide.shapes[edit.shape_index]
             if hasattr(shape, "text"):
                 shape.text = edit.new_text
+
+        # Re-apply inferred theme after text edits so color/font style is not lost
+        # when certain PPT text boxes reset run formatting.
+        theme = self.infer_theme_for_presentation(prs)
+        self.apply_theme_to_presentation(prs, theme)
+
         save_path = output_path or self._default_output(path, "edited")
         prs.save(save_path)
         return save_path
