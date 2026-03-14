@@ -258,23 +258,40 @@ export default function App() {
     setNotice(`Slide ${selectedSlide.slide_index + 1} text copied`)
   }
 
-  const rewriteTitle = () => {
-    if (!selectedSlide) return
-    const titleShape = selectedSlide.editableShapes.find((s) => s.role === 'title') || selectedSlide.editableShapes[0]
-    if (!titleShape) return
-    const current = titleShape.text.trim()
-    const next = current ? `Overview: ${current.replace(/^Overview:\s*/i, '')}` : 'Overview'
-    updateText(selectedSlide.slide_index, titleShape.shape_index, next)
+  const rewriteTitle = async () => {
+    if (!selectedSlide || !pptPath) return
+    const message = `Rewrite the title of slide ${selectedSlide.slide_index + 1} to be clearer and more professional, keep it concise.`
+    setLoading(true)
+    try {
+      const data = await api('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ path: pptPath, message }),
+      })
+      setMessages((m) => [...m, { role: 'assistant', text: `Rewrite title done (${data.used_llm ? 'LLM' : 'fallback'}).` }])
+      await loadPPT(data.output_path)
+    } catch (e) {
+      setNotice(`Rewrite title failed: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const expandBullets = () => {
-    if (!selectedSlide) return
-    selectedSlide.editableShapes
-      .filter((s) => s.role !== 'title')
-      .forEach((shape) => {
-        const expanded = `${shape.text}\n• Impact: expected business value and next action`
-        updateText(selectedSlide.slide_index, shape.shape_index, expanded)
+  const expandBullets = async () => {
+    if (!selectedSlide || !pptPath) return
+    const message = `Expand the key bullet points on slide ${selectedSlide.slide_index + 1} with more detail, keep structure clear.`
+    setLoading(true)
+    try {
+      const data = await api('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ path: pptPath, message }),
       })
+      setMessages((m) => [...m, { role: 'assistant', text: `Expand bullets done (${data.used_llm ? 'LLM' : 'fallback'}).` }])
+      await loadPPT(data.output_path)
+    } catch (e) {
+      setNotice(`Expand bullets failed: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -324,11 +341,17 @@ export default function App() {
               </div>
             </label>
             <label>
-              Audience
+              <span className="label-row">
+                Audience
+                <span className="field-help" title="Who will read this deck? Example: leadership team, technical audience, students.">ⓘ</span>
+              </span>
               <input value={form.audience} onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))} />
             </label>
             <label>
-              Tone
+              <span className="label-row">
+                Tone
+                <span className="field-help" title="Writing style for the slides. Example: concise, formal, persuasive, friendly.">ⓘ</span>
+              </span>
               <input value={form.tone} onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))} />
             </label>
             <label>
@@ -367,14 +390,12 @@ export default function App() {
               <button className="ghost-btn" onClick={redo} disabled={!redoStack.length}>Redo</button>
               <button className="ghost-btn" onClick={() => saveManualEdits()} disabled={loading || !doc}>Save</button>
               {pptPath && (
-                <a
-                  className="ghost-btn link-btn"
-                  href={`${API_BASE}/api/ppt/download?path=${encodeURIComponent(pptPath)}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  className="ghost-btn"
+                  onClick={() => window.open(`${API_BASE}/api/ppt/download?path=${encodeURIComponent(pptPath)}`, '_blank')}
                 >
                   Download .pptx
-                </a>
+                </button>
               )}
             </div>
           </div>
