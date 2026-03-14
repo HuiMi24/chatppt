@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List
+
+from pptx import Presentation
+from pptx.enum.shapes import PP_PLACEHOLDER
+from pptx.dml.color import RGBColor
+
+from .models import PptDocument, SlideContent, ShapeText, EditInstruction
+
+
+@dataclass
+class ThemeConfig:
+    name: str
+    title_color: RGBColor
+    body_color: RGBColor
+    bg_color: RGBColor
+    font_name: str
+    title_size_pt: int
+    body_size_pt: int
+
+
+class PPTService:
+    def parse_ppt(self, path: str) -> PptDocument:
+        prs = Presentation(path)
+        slides: List[SlideContent] = []
+
+        for si, slide in enumerate(prs.slides):
+            parsed = SlideContent(slide_index=si, shapes=[])
+            for hi, shape in enumerate(slide.shapes):
+                if not hasattr(shape, "text"):
+                    continue
+                text = (shape.text or "").strip()
+                if not text:
+                    continue
+                role = self._shape_role(shape)
+                if role == "title" and not parsed.title:
+                    parsed.title = text
+                parsed.shapes.append(ShapeText(shape_index=hi, role=role, text=text))
+            slides.append(parsed)
+
+        return PptDocument(path=path, slide_count=len(prs.slides), slides=slides)
+
+    def apply_edits(self, path: str, edits: List[EditInstruction], output_path: str | None = None) -> str:
+        prs = Presentation(path)
+        for edit in edits:
+            slide = prs.slides[edit.slide_index]
+            shape = slide.shapes[edit.shape_index]
+            if hasattr(shape, "text"):
+                shape.text = edit.new_text
+        save_path = output_path or self._default_output(path, "edited")
+        prs.save(save_path)
+        return save_path
+
+    def apply_theme(self, path: str, output_path: str | None = None) -> tuple[str, ThemeConfig]:
+        prs = Presentation(path)
+        full_text = " ".join(
+            (shape.text or "")
+            for slide in prs.slides
+            for shape in slide.shapes
+            if hasattr(shape, "text")
+        ).lower()
+        theme = self._theme_from_text(full_text)
+
+        for slide in prs.slides:
+            bg = slide.background
+            fill = bg.fill
+            fill.solid()
+            fill.fore_color.rgb = theme.bg_color
+
+            for shape in slide.shapes:
+                if not hasattr(shape, "text_frame"):
+                    continue
+                role = self._shape_role(shape)
+                for p in shape.text_frame.paragraphs:
+                    for run in p.runs:
+                        run.font.name = theme.font_name
+                        if role == "title":
+                            run.font.bold = True
+                            run.font.size = self._pt(theme.title_size_pt)
+                            run.font.color.rgb = theme.title_color
+                        else:
+                            run.font.size = self._pt(theme.body_size_pt)
+                            run.font.color.rgb = theme.body_color
+
+        save_path = output_path or self._default_output(path, f"theme-{theme.name}")
+        prs.save(save_path)
+        return save_path, theme
+
+    def _shape_role(self, shape) -> str:
+        try:
+            if shape.is_placeholder:
+                ptype = shape.placeholder_format.type
+                if ptype == PP_PLACEHOLDER.TITLE or ptype == PP_PLACEHOLDER.CENTER_TITLE:
+                    return "title"
+                if ptype in (PP_PLACEHOLDER.BODY, PP_PLACEHOLDER.OBJECT):
+                    return "body"
+        except Exception:
+            pass
+        return "text"
+
+    def _theme_from_text(self, text: str) -> ThemeConfig:
+        if any(k in text for k in ["finance", "business", "strategy", "market"]):
+            return ThemeConfig("corporate", RGBColor(12, 43, 89), RGBColor(30, 47, 64), RGBColor(239, 245, 252), "Calibri", 36, 20)
+        if any(k in text for k in ["kids", "children", "fun", "game", "cartoon"]):
+            return ThemeConfig("playful", RGBColor(154, 52, 142), RGBColor(52, 77, 160), RGBColor(255, 248, 230), "Arial", 40, 22)
+        if any(k in text for k in ["tech", "ai", "code", "data", "cloud"]):
+            return ThemeConfig("tech", RGBColor(22, 163, 74), RGBColor(15, 118, 110), RGBColor(240, 253, 250), "Segoe UI", 38, 20)
+        return ThemeConfig("clean", RGBColor(17, 24, 39), RGBColor(55, 65, 81), RGBColor(249, 250, 251), "Calibri", 36, 20)
+
+    def _default_output(self, path: str, suffix: str) -> str:
+        src = Path(path)
+        return str(src.with_name(f"{src.stem}_{suffix}{src.suffix}"))
+
+    @staticmethod
+    def _pt(size: int):
+        from pptx.util import Pt
+
+        return Pt(size)

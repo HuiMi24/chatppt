@@ -1,0 +1,17 @@
+:root { font-family: Inter, system-ui, Arial, sans-serif; }
+body { margin: 0; background: #f8fafc; }
+.container { padding: 20px; }
+.layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.row { display: flex; gap: 8px; margin-bottom: 12px; }
+input, button, textarea { font-size: 14px; padding: 8px; }
+input { flex: 1; }
+button { cursor: pointer; }
+.slide { background: white; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+label { display: block; margin-bottom: 10px; }
+label span { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+textarea { width: 100%; min-height: 70px; }
+.chat-box { min-height: 250px; max-height: 420px; overflow: auto; background: white; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+.msg { margin-bottom: 8px; padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+.msg.user { background: #e0f2fe; }
+.msg.assistant { background: #f1f5f9; }
+.notice { color: #0f766e; font-weight: 500; }

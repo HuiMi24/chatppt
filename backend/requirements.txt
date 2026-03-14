@@ -1,0 +1,5 @@
+fastapi==0.111.0
+uvicorn==0.30.1
+python-pptx==0.6.21
+pydantic==2.7.4
+openai==0.27.2
