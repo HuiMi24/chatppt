@@ -51,7 +51,7 @@ export default function App() {
   const [notice, setNotice] = useState('')
 
   const [previewImages, setPreviewImages] = useState([])
-  const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
+  const [selectedSlideIndex, setSelectedSlideIndex] = useState(() => Number(localStorage.getItem('chatppt:selectedSlide') || 0))
   const [dirtySlides, setDirtySlides] = useState(() => new Set())
 
   const [undoStack, setUndoStack] = useState([])
@@ -78,6 +78,10 @@ export default function App() {
     () => titleAndBody.find((s) => s.slide_index === selectedSlideIndex) || titleAndBody[0] || null,
     [titleAndBody, selectedSlideIndex],
   )
+
+  useEffect(() => {
+    localStorage.setItem('chatppt:selectedSlide', String(selectedSlideIndex))
+  }, [selectedSlideIndex])
 
   useEffect(() => {
     if (!isResizing) return
@@ -107,12 +111,16 @@ export default function App() {
     return () => clearTimeout(autosaveTimerRef.current)
   }, [doc, isDirty, pptPath])
 
-  const loadPPT = async (path = pptPath) => {
+  const loadPPT = async (path = pptPath, { keepSelection = true } = {}) => {
     setLoading(true)
     try {
       const data = await api(`/api/ppt?path=${encodeURIComponent(path)}`)
       setDoc(data)
-      setSelectedSlideIndex(0)
+      if (keepSelection) {
+        setSelectedSlideIndex((prev) => Math.min(prev, Math.max(0, (data.slides?.length || 1) - 1)))
+      } else {
+        setSelectedSlideIndex(0)
+      }
       setPptPath(path)
       setDirtySlides(new Set())
       setUndoStack([])
@@ -142,7 +150,7 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      await loadPPT(data.output_path)
+      await loadPPT(data.output_path, { keepSelection: false })
       setNotice(`Generated and loaded: ${data.output_path} (Theme: ${data.theme.name})`)
       setMessages((m) => [
         ...m,
