@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .chat_service import ChatPlanner
@@ -74,6 +75,19 @@ def preview_ppt(path: str):
             "images": [f"/static/previews/{p}" for p in rel_images],
             "count": len(rel_images),
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/ppt/download")
+def download_ppt(path: str):
+    try:
+        p = Path(path)
+        if not p.exists() or not p.is_file():
+            raise HTTPException(status_code=404, detail="PPT file not found")
+        return FileResponse(path=str(p), filename=p.name, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

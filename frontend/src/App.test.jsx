@@ -30,9 +30,7 @@ describe('App generator form', () => {
     fireEvent.change(screen.getByLabelText('Topic / Prompt *'), {
       target: { value: 'AI Platform Plan' },
     })
-    fireEvent.change(screen.getByTestId('preset-select'), {
-      target: { value: 'Tech' },
-    })
+    fireEvent.click(screen.getByTestId('preset-tech'))
     fireEvent.change(screen.getByTestId('language-select'), {
       target: { value: 'ja-JP' },
     })

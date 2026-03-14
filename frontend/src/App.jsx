@@ -4,7 +4,12 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   `${window.location.protocol}//${window.location.hostname}:8000`
 
-const PRESET_OPTIONS = ['Business', 'Tech', 'Education', 'Marketing']
+const PRESET_OPTIONS = [
+  { name: 'Business', desc: 'Executive, clean, data-focused', colors: ['#3b82f6', '#1e3a8a'] },
+  { name: 'Tech', desc: 'Modern, product & engineering', colors: ['#22c55e', '#0f766e'] },
+  { name: 'Education', desc: 'Clear, instructional, calm', colors: ['#eab308', '#a16207'] },
+  { name: 'Marketing', desc: 'Bold, storytelling, conversion', colors: ['#f43f5e', '#be123c'] },
+]
 
 const LANGUAGE_OPTIONS = [
   { label: 'English', value: 'en-US' },
@@ -238,6 +243,32 @@ export default function App() {
     }
   }
 
+  const copySlideText = async () => {
+    if (!selectedSlide) return
+    const text = selectedSlide.editableShapes.map((s) => `[${s.role}] ${s.text}`).join('\n')
+    await navigator.clipboard.writeText(text)
+    setNotice(`Slide ${selectedSlide.slide_index + 1} text copied`)
+  }
+
+  const rewriteTitle = () => {
+    if (!selectedSlide) return
+    const titleShape = selectedSlide.editableShapes.find((s) => s.role === 'title') || selectedSlide.editableShapes[0]
+    if (!titleShape) return
+    const current = titleShape.text.trim()
+    const next = current ? `Overview: ${current.replace(/^Overview:\s*/i, '')}` : 'Overview'
+    updateText(selectedSlide.slide_index, titleShape.shape_index, next)
+  }
+
+  const expandBullets = () => {
+    if (!selectedSlide) return
+    selectedSlide.editableShapes
+      .filter((s) => s.role !== 'title')
+      .forEach((shape) => {
+        const expanded = `${shape.text}\n• Impact: expected business value and next action`
+        updateText(selectedSlide.slide_index, shape.shape_index, expanded)
+      })
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -264,12 +295,25 @@ export default function App() {
 
           <div className="field-grid">
             <label>
-              Preset
-              <select data-testid="preset-select" value={form.preset} onChange={(e) => setForm((f) => ({ ...f, preset: e.target.value }))}>
+              Theme preset
+              <div className="theme-cards">
                 {PRESET_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <button
+                    type="button"
+                    key={option.name}
+                    data-testid={`preset-${option.name.toLowerCase()}`}
+                    className={`theme-card ${form.preset === option.name ? 'active' : ''}`}
+                    onClick={() => setForm((f) => ({ ...f, preset: option.name }))}
+                  >
+                    <div className="theme-swatches">
+                      <span style={{ background: option.colors[0] }} />
+                      <span style={{ background: option.colors[1] }} />
+                    </div>
+                    <strong>{option.name}</strong>
+                    <small>{option.desc}</small>
+                  </button>
                 ))}
-              </select>
+              </div>
             </label>
             <label>
               Audience
@@ -314,6 +358,16 @@ export default function App() {
               <button className="ghost-btn" onClick={undo} disabled={!undoStack.length}>Undo</button>
               <button className="ghost-btn" onClick={redo} disabled={!redoStack.length}>Redo</button>
               <button className="ghost-btn" onClick={() => saveManualEdits()} disabled={loading || !doc}>Save</button>
+              {pptPath && (
+                <a
+                  className="ghost-btn link-btn"
+                  href={`${API_BASE}/api/ppt/download?path=${encodeURIComponent(pptPath)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Download .pptx
+                </a>
+              )}
             </div>
           </div>
 
@@ -341,6 +395,11 @@ export default function App() {
                 {selectedSlide && (
                   <article className="slide-card" key={selectedSlide.slide_index}>
                     <h3>Slide {selectedSlide.slide_index + 1}</h3>
+                    <div className="quick-actions">
+                      <button className="ghost-btn" onClick={copySlideText}>Copy Slide Text</button>
+                      <button className="ghost-btn" onClick={rewriteTitle}>Rewrite Title</button>
+                      <button className="ghost-btn" onClick={expandBullets}>Expand Bullets</button>
+                    </div>
                     {previewImages[selectedSlide.slide_index] && (
                       <div className="selected-preview">
                         <img src={toAbsolute(previewImages[selectedSlide.slide_index])} alt={`Selected slide ${selectedSlide.slide_index + 1}`} />
