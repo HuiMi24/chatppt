@@ -42,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [previewImages, setPreviewImages] = useState([])
+  const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
   const [chatInput, setChatInput] = useState('')
   const [messages, setMessages] = useState([
     { role: 'assistant', text: 'Enter a topic and click "Generate PPT". Then continue editing through chat.' },
@@ -55,11 +56,17 @@ export default function App() {
     }))
   }, [doc])
 
+  const selectedSlide = useMemo(
+    () => titleAndBody.find((s) => s.slide_index === selectedSlideIndex) || titleAndBody[0] || null,
+    [titleAndBody, selectedSlideIndex],
+  )
+
   const loadPPT = async (path = pptPath) => {
     setLoading(true)
     try {
       const data = await api(`/api/ppt?path=${encodeURIComponent(path)}`)
       setDoc(data)
+      setSelectedSlideIndex(0)
       setPptPath(path)
       const preview = await api(`/api/ppt/preview?path=${encodeURIComponent(path)}`)
       setPreviewImages(preview.images || [])
@@ -254,28 +261,39 @@ export default function App() {
             <button className="ghost-btn" onClick={saveManualEdits} disabled={loading || !doc}>Save Text Changes</button>
           </div>
 
-          {previewImages.length > 0 && (
-            <div className="preview-strip">
-              {previewImages.map((img, idx) => (
-                <img key={img} src={toAbsolute(img)} alt={`Slide preview ${idx + 1}`} />
-              ))}
-            </div>
-          )}
-
           {!doc && <div className="skeleton">Start by entering a topic and generating a PPT from the left panel.</div>}
           {doc && (
-            <div className="slides-list">
-              {titleAndBody.map((slide) => (
-                <article className="slide-card" key={slide.slide_index}>
-                  <h3>Slide {slide.slide_index + 1}</h3>
-                  {slide.editableShapes.map((sh) => (
-                    <label key={sh.shape_index}>
-                      <span>{sh.role} · shape #{sh.shape_index}</span>
-                      <textarea value={sh.text} onChange={(e) => updateText(slide.slide_index, sh.shape_index, e.target.value)} />
-                    </label>
-                  ))}
-                </article>
-              ))}
+            <div className="editor-layout">
+              <div className="preview-column">
+                {previewImages.map((img, idx) => (
+                  <button
+                    type="button"
+                    key={img}
+                    className={`preview-thumb ${selectedSlideIndex === idx ? 'active' : ''}`}
+                    onClick={() => setSelectedSlideIndex(idx)}
+                  >
+                    <img src={toAbsolute(img)} alt={`Slide preview ${idx + 1}`} />
+                    <span>Slide {idx + 1}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="slides-list">
+                {selectedSlide && (
+                  <article className="slide-card" key={selectedSlide.slide_index}>
+                    <h3>Slide {selectedSlide.slide_index + 1}</h3>
+                    {selectedSlide.editableShapes.map((sh) => (
+                      <label key={sh.shape_index}>
+                        <span>{sh.role} · shape #{sh.shape_index}</span>
+                        <textarea
+                          value={sh.text}
+                          onChange={(e) => updateText(selectedSlide.slide_index, sh.shape_index, e.target.value)}
+                        />
+                      </label>
+                    ))}
+                  </article>
+                )}
+              </div>
             </div>
           )}
         </section>
