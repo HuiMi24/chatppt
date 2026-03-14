@@ -282,6 +282,16 @@ export default function App() {
                 {selectedSlide && (
                   <article className="slide-card" key={selectedSlide.slide_index}>
                     <h3>Slide {selectedSlide.slide_index + 1}</h3>
+
+                    {previewImages[selectedSlide.slide_index] && (
+                      <div className="selected-preview">
+                        <img
+                          src={toAbsolute(previewImages[selectedSlide.slide_index])}
+                          alt={`Selected slide ${selectedSlide.slide_index + 1}`}
+                        />
+                      </div>
+                    )}
+
                     {selectedSlide.editableShapes.map((sh) => (
                       <label key={sh.shape_index}>
                         <span>{sh.role} · shape #{sh.shape_index}</span>

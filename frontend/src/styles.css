@@ -141,8 +141,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .editor-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 12px;
+  grid-template-columns: 300px 1fr;
+  gap: 14px;
 }
 
 .preview-column {
@@ -158,8 +158,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   text-align: left;
   background: rgba(27, 10, 48, 0.9);
   border: 1px solid rgba(196, 181, 253, 0.25);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: 12px;
+  padding: 10px;
 }
 
 .preview-thumb.active {
@@ -175,8 +175,21 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .preview-thumb span {
-  font-size: 12px;
+  font-size: 13px;
   color: #e9d5ff;
+}
+
+.selected-preview {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  background: #140a24;
+}
+
+.selected-preview img {
+  width: 100%;
+  display: block;
 }
 
 .slides-list {
@@ -255,7 +268,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     overflow-y: hidden;
   }
   .preview-thumb {
-    min-width: 180px;
+    min-width: 220px;
   }
   .chat-box, .slides-list { max-height: 42vh; height: auto; }
 }
