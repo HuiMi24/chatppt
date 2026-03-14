@@ -139,6 +139,23 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   margin-bottom: 10px;
 }
 
+.preview-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 260px;
+  gap: 10px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+}
+
+.preview-strip img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #0b1222;
+}
+
 .slides-list {
   max-height: 72vh;
   overflow: auto;

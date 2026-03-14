@@ -24,6 +24,8 @@ async function api(path, options = {}) {
   return res.json()
 }
 
+const toAbsolute = (url) => (url?.startsWith('http') ? url : `${API_BASE}${url}`)
+
 const initialForm = {
   topic: '',
   audience: '',
@@ -39,6 +41,7 @@ export default function App() {
   const [doc, setDoc] = useState(null)
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
+  const [previewImages, setPreviewImages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [messages, setMessages] = useState([
     { role: 'assistant', text: 'Enter a topic and click "Generate PPT". Then continue editing through chat.' },
@@ -58,6 +61,8 @@ export default function App() {
       const data = await api(`/api/ppt?path=${encodeURIComponent(path)}`)
       setDoc(data)
       setPptPath(path)
+      const preview = await api(`/api/ppt/preview?path=${encodeURIComponent(path)}`)
+      setPreviewImages(preview.images || [])
     } finally {
       setLoading(false)
     }
@@ -248,6 +253,14 @@ export default function App() {
             <h2>Preview and Text Editing</h2>
             <button className="ghost-btn" onClick={saveManualEdits} disabled={loading || !doc}>Save Text Changes</button>
           </div>
+
+          {previewImages.length > 0 && (
+            <div className="preview-strip">
+              {previewImages.map((img, idx) => (
+                <img key={img} src={toAbsolute(img)} alt={`Slide preview ${idx + 1}`} />
+              ))}
+            </div>
+          )}
 
           {!doc && <div className="skeleton">Start by entering a topic and generating a PPT from the left panel.</div>}
           {doc && (

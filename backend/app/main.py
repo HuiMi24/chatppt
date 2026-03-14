@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .chat_service import ChatPlanner
 from .generator_service import GeneratorService
@@ -14,6 +17,10 @@ from .models import (
 from .ppt_service import PPTService
 
 app = FastAPI(title="ChatPPT API", version="0.2.0")
+
+PREVIEW_ROOT = Path(__file__).resolve().parent.parent / "generated" / "previews"
+PREVIEW_ROOT.mkdir(parents=True, exist_ok=True)
+app.mount("/static/previews", StaticFiles(directory=str(PREVIEW_ROOT)), name="previews")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +62,18 @@ def generate_ppt(req: GenerateRequest):
 def parse_ppt(path: str):
     try:
         return ppt_service.parse_ppt(path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/ppt/preview")
+def preview_ppt(path: str):
+    try:
+        rel_images = ppt_service.render_preview_images(path, str(PREVIEW_ROOT))
+        return {
+            "images": [f"/static/previews/{p}" for p in rel_images],
+            "count": len(rel_images),
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
+import hashlib
+import subprocess
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -85,6 +87,53 @@ class PPTService:
         save_path = output_path or self._default_output(path, f"theme-{theme.name}")
         prs.save(save_path)
         return save_path, theme
+
+    def render_preview_images(self, path: str, preview_root: str) -> list[str]:
+        src = Path(path)
+        if not src.exists():
+            raise FileNotFoundError(f"PPT not found: {path}")
+
+        preview_root_path = Path(preview_root)
+        digest = hashlib.sha1(str(src.resolve()).encode("utf-8")).hexdigest()[:12]
+        out_dir = preview_root_path / digest
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        pdf_path = out_dir / f"{src.stem}.pdf"
+        subprocess.run(
+            [
+                "soffice",
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(out_dir),
+                str(src),
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        if not pdf_path.exists():
+            candidate = out_dir / f"{src.stem}.PDF"
+            if candidate.exists():
+                pdf_path = candidate
+        if not pdf_path.exists():
+            raise RuntimeError("Failed to convert PPT to PDF for preview")
+
+        prefix = out_dir / "slide"
+        subprocess.run(
+            ["pdftoppm", "-png", str(pdf_path), str(prefix)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        images = sorted(out_dir.glob("slide-*.png"))
+        if not images:
+            raise RuntimeError("No preview images generated")
+
+        return [str(img.relative_to(preview_root_path)) for img in images]
 
     def infer_theme_for_presentation(self, prs: Presentation) -> ThemeConfig:
         full_text = " ".join(
