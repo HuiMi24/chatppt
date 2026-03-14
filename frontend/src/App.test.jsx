@@ -18,6 +18,10 @@ describe('App generator form', () => {
         ok: true,
         json: async () => ({ path: '/tmp/generated.pptx', slide_count: 0, slides: [] }),
       })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ images: [], count: 0 }),
+      })
 
     vi.stubGlobal('fetch', fetchMock)
 
@@ -35,7 +39,7 @@ describe('App generator form', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Generate PPT' }))
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
 
     const generateRequest = JSON.parse(fetchMock.mock.calls[0][1].body)
     expect(generateRequest.topic).toBe('AI Platform Plan')

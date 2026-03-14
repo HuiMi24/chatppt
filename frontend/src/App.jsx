@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -37,16 +37,29 @@ const initialForm = {
 
 export default function App() {
   const [form, setForm] = useState(initialForm)
+  const [leftWidth, setLeftWidth] = useState(360)
+  const [isResizing, setIsResizing] = useState(false)
+
   const [pptPath, setPptPath] = useState('')
   const [doc, setDoc] = useState(null)
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
+
   const [previewImages, setPreviewImages] = useState([])
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
+  const [dirtySlides, setDirtySlides] = useState(() => new Set())
+
+  const [undoStack, setUndoStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
+  const [isDirty, setIsDirty] = useState(false)
+
+  const [chatOpen, setChatOpen] = useState(true)
   const [chatInput, setChatInput] = useState('')
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Enter a topic and click "Generate PPT". Then continue editing through chat.' },
+    { role: 'assistant', text: 'Enter a topic and click "Generate PPT". Then continue editing via chat.' },
   ])
+
+  const autosaveTimerRef = useRef(null)
 
   const titleAndBody = useMemo(() => {
     if (!doc) return []
@@ -61,6 +74,34 @@ export default function App() {
     [titleAndBody, selectedSlideIndex],
   )
 
+  useEffect(() => {
+    if (!isResizing) return
+
+    const onMove = (e) => {
+      const min = 300
+      const max = Math.min(520, window.innerWidth * 0.45)
+      setLeftWidth(Math.max(min, Math.min(max, e.clientX - 32)))
+    }
+
+    const onUp = () => setIsResizing(false)
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    if (!isDirty || !doc || !pptPath) return
+    clearTimeout(autosaveTimerRef.current)
+    autosaveTimerRef.current = setTimeout(() => {
+      saveManualEdits({ silent: true })
+    }, 1500)
+    return () => clearTimeout(autosaveTimerRef.current)
+  }, [doc, isDirty, pptPath])
+
   const loadPPT = async (path = pptPath) => {
     setLoading(true)
     try {
@@ -68,6 +109,10 @@ export default function App() {
       setDoc(data)
       setSelectedSlideIndex(0)
       setPptPath(path)
+      setDirtySlides(new Set())
+      setUndoStack([])
+      setRedoStack([])
+      setIsDirty(false)
       const preview = await api(`/api/ppt/preview?path=${encodeURIComponent(path)}`)
       setPreviewImages(preview.images || [])
     } finally {
@@ -110,18 +155,43 @@ export default function App() {
 
   const updateText = (slideIndex, shapeIndex, value) => {
     setDoc((prev) => {
+      if (!prev) return prev
+      setUndoStack((s) => [...s, structuredClone(prev)])
+      setRedoStack([])
       const cloned = structuredClone(prev)
       const slide = cloned.slides.find((s) => s.slide_index === slideIndex)
       const shape = slide?.shapes.find((sh) => sh.shape_index === shapeIndex)
-      if (shape) shape.text = value
+      if (shape) {
+        shape.text = value
+        setDirtySlides((set0) => new Set([...set0, slideIndex]))
+        setIsDirty(true)
+      }
       return cloned
     })
   }
 
-  const saveManualEdits = async () => {
+  const undo = () => {
+    if (!undoStack.length || !doc) return
+    const prev = undoStack[undoStack.length - 1]
+    setUndoStack((s) => s.slice(0, -1))
+    setRedoStack((s) => [...s, structuredClone(doc)])
+    setDoc(prev)
+    setIsDirty(true)
+  }
+
+  const redo = () => {
+    if (!redoStack.length || !doc) return
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack((s) => s.slice(0, -1))
+    setUndoStack((s) => [...s, structuredClone(doc)])
+    setDoc(next)
+    setIsDirty(true)
+  }
+
+  const saveManualEdits = async ({ silent = false } = {}) => {
     if (!doc || !pptPath) return
     setLoading(true)
-    setNotice('')
+    if (!silent) setNotice('')
     try {
       const edits = []
       for (const s of doc.slides) {
@@ -134,7 +204,7 @@ export default function App() {
         body: JSON.stringify({ path: pptPath, edits }),
       })
       await loadPPT(data.output_path)
-      setNotice(`Text edits saved: ${data.output_path}`)
+      setNotice(silent ? `Auto-saved at ${new Date().toLocaleTimeString()}` : `Text edits saved: ${data.output_path}`)
     } catch (e) {
       setNotice(e.message)
     } finally {
@@ -180,7 +250,7 @@ export default function App() {
 
       {notice && <div className="notice">{notice}</div>}
 
-      <main className="main-grid">
+      <main className="main-grid" style={{ gridTemplateColumns: `${leftWidth}px 8px 1fr` }}>
         <aside className="panel generator-panel">
           <h2>Generator</h2>
           <label>
@@ -195,33 +265,19 @@ export default function App() {
           <div className="field-grid">
             <label>
               Preset
-              <select
-                data-testid="preset-select"
-                value={form.preset}
-                onChange={(e) => setForm((f) => ({ ...f, preset: e.target.value }))}
-              >
+              <select data-testid="preset-select" value={form.preset} onChange={(e) => setForm((f) => ({ ...f, preset: e.target.value }))}>
                 {PRESET_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
             <label>
               Audience
-              <input
-                value={form.audience}
-                onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
-                placeholder="e.g. leadership team, students"
-              />
+              <input value={form.audience} onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))} />
             </label>
             <label>
               Tone
-              <input
-                value={form.tone}
-                onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))}
-                placeholder="e.g. concise, formal"
-              />
+              <input value={form.tone} onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))} />
             </label>
             <label>
               Slides
@@ -235,15 +291,9 @@ export default function App() {
             </label>
             <label>
               Language
-              <select
-                data-testid="language-select"
-                value={form.language}
-                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-              >
+              <select data-testid="language-select" value={form.language} onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}>
                 {LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
             </label>
@@ -255,10 +305,16 @@ export default function App() {
           <p className="hint">The generated deck will load in the editor automatically.</p>
         </aside>
 
+        <div className="resize-handle" onMouseDown={() => setIsResizing(true)} />
+
         <section className="panel editor-panel">
           <div className="panel-head">
             <h2>Preview and Text Editing</h2>
-            <button className="ghost-btn" onClick={saveManualEdits} disabled={loading || !doc}>Save Text Changes</button>
+            <div className="row-actions">
+              <button className="ghost-btn" onClick={undo} disabled={!undoStack.length}>Undo</button>
+              <button className="ghost-btn" onClick={redo} disabled={!redoStack.length}>Redo</button>
+              <button className="ghost-btn" onClick={() => saveManualEdits()} disabled={loading || !doc}>Save</button>
+            </div>
           </div>
 
           {!doc && <div className="skeleton">Start by entering a topic and generating a PPT from the left panel.</div>}
@@ -273,7 +329,10 @@ export default function App() {
                     onClick={() => setSelectedSlideIndex(idx)}
                   >
                     <img src={toAbsolute(img)} alt={`Slide preview ${idx + 1}`} />
-                    <span>Slide {idx + 1}</span>
+                    <span>
+                      Slide {idx + 1}
+                      {dirtySlides.has(idx) && <em className="dirty-tag"> • modified</em>}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -282,23 +341,15 @@ export default function App() {
                 {selectedSlide && (
                   <article className="slide-card" key={selectedSlide.slide_index}>
                     <h3>Slide {selectedSlide.slide_index + 1}</h3>
-
                     {previewImages[selectedSlide.slide_index] && (
                       <div className="selected-preview">
-                        <img
-                          src={toAbsolute(previewImages[selectedSlide.slide_index])}
-                          alt={`Selected slide ${selectedSlide.slide_index + 1}`}
-                        />
+                        <img src={toAbsolute(previewImages[selectedSlide.slide_index])} alt={`Selected slide ${selectedSlide.slide_index + 1}`} />
                       </div>
                     )}
-
                     {selectedSlide.editableShapes.map((sh) => (
                       <label key={sh.shape_index}>
                         <span>{sh.role} · shape #{sh.shape_index}</span>
-                        <textarea
-                          value={sh.text}
-                          onChange={(e) => updateText(selectedSlide.slide_index, sh.shape_index, e.target.value)}
-                        />
+                        <textarea value={sh.text} onChange={(e) => updateText(selectedSlide.slide_index, sh.shape_index, e.target.value)} />
                       </label>
                     ))}
                   </article>
@@ -309,23 +360,25 @@ export default function App() {
         </section>
       </main>
 
-      <section className="panel chat-panel chat-panel-bottom">
-        <h2>Chat Edits</h2>
-        <div className="chat-box">
-          {messages.map((m, i) => (
-            <div key={i} className={`msg ${m.role}`}>{m.text}</div>
-          ))}
-          {loading && <div className="msg assistant">Processing...</div>}
-        </div>
-        <div className="chat-input-row">
-          <input
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Example: change slide 3 title to Growth Loop"
-          />
-          <button onClick={sendChat} disabled={loading || !doc}>Send</button>
-        </div>
-      </section>
+      <button className="chat-fab" onClick={() => setChatOpen((v) => !v)}>
+        {chatOpen ? 'Hide Chat' : 'Chat Edit'}
+      </button>
+
+      {chatOpen && (
+        <section className="panel chat-floating">
+          <h2>Chat Edits</h2>
+          <div className="chat-box">
+            {messages.map((m, i) => (
+              <div key={i} className={`msg ${m.role}`}>{m.text}</div>
+            ))}
+            {loading && <div className="msg assistant">Processing...</div>}
+          </div>
+          <div className="chat-input-row">
+            <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Example: change slide 3 title to Growth Loop" />
+            <button onClick={sendChat} disabled={loading || !doc}>Send</button>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
