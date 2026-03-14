@@ -11,6 +11,11 @@ class ChatPlanner:
         self.ppt_service = ppt_service
 
     def build_plan(self, path: str, message: str) -> tuple[List[EditInstruction], bool]:
+        if os.getenv("FAKE_LLM_RESPONSES", "0") == "1":
+            plan = self._fake_llm_plan(path, message)
+            if plan:
+                return plan, True
+
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             try:
@@ -47,6 +52,17 @@ class ChatPlanner:
         raw = match.group(1) if match else content
         data = json.loads(raw)
         return [EditInstruction(**x) for x in data]
+
+    def _fake_llm_plan(self, path: str, message: str) -> List[EditInstruction]:
+        doc = self.ppt_service.parse_ppt(path)
+        if not doc.slides:
+            return []
+        slide = doc.slides[0]
+        if not slide.shapes:
+            return []
+        title = next((s for s in slide.shapes if s.role == "title"), slide.shapes[0])
+        text = f"[FAKE LLM] {message.strip()}"
+        return [EditInstruction(slide_index=0, shape_index=title.shape_index, new_text=text)]
 
     def _rule_based_plan(self, path: str, message: str) -> List[EditInstruction]:
         doc = self.ppt_service.parse_ppt(path)

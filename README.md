@@ -51,6 +51,8 @@ Backend (optional):
 ```bash
 export OPENAI_API_KEY=your_key
 export OPENAI_MODEL=gpt-3.5-turbo
+# Optional for online demo testing without real LLM calls:
+export FAKE_LLM_RESPONSES=1
 ```
 
 Frontend (optional):

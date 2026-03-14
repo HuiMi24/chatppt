@@ -53,15 +53,18 @@ class GeneratorService:
         self.ppt_service = ppt_service
 
     def generate(self, req: GenerateRequest) -> tuple[str, List[OutlineSlide], ThemeConfig]:
-        api_key = os.getenv("OPENAI_API_KEY")
-
-        if api_key:
-            try:
-                outline = self._outline_from_llm(req, api_key)
-            except Exception:
-                outline = self._fallback_outline(req)
+        if os.getenv("FAKE_LLM_RESPONSES", "0") == "1":
+            outline = self._fake_llm_outline(req)
         else:
-            outline = self._fallback_outline(req)
+            api_key = os.getenv("OPENAI_API_KEY")
+
+            if api_key:
+                try:
+                    outline = self._outline_from_llm(req, api_key)
+                except Exception:
+                    outline = self._fallback_outline(req)
+            else:
+                outline = self._fallback_outline(req)
 
         output_path = req.output_path or self._default_output_path(req.topic)
         subtitle = self._build_subtitle(req)
@@ -73,6 +76,22 @@ class GeneratorService:
         prs.save(output_path)
 
         return output_path, outline, theme
+
+    def _fake_llm_outline(self, req: GenerateRequest) -> List[OutlineSlide]:
+        language = req.language or "en-US"
+        lang = self._language_family(language)
+        topic = req.topic
+        if lang == "zh":
+            slides = [
+                OutlineSlide(title=f"[FAKE LLM] {topic} - 项目概览", bullets=["目标与范围", "关键里程碑", "当前状态"]),
+                OutlineSlide(title=f"[FAKE LLM] {topic} - 实施路径", bullets=["阶段划分", "资源与分工", "风险与对策"]),
+            ]
+        else:
+            slides = [
+                OutlineSlide(title=f"[FAKE LLM] {topic} - Executive Overview", bullets=["Goal and scope", "Key milestones", "Current status"]),
+                OutlineSlide(title=f"[FAKE LLM] {topic} - Execution Plan", bullets=["Phases", "Ownership", "Risks and mitigation"]),
+            ]
+        return self._normalize_outline(slides, req.slide_count, language)
 
     def _outline_from_llm(self, req: GenerateRequest, api_key: str) -> List[OutlineSlide]:
         import openai
